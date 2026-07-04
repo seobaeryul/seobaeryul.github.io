@@ -6,33 +6,38 @@
 <title>Save-IT Eat | 실시간 마감할인 레이더</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<!-- MQTT 클라이언트 (브라우저용, WebSocket 기반) -->
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<!-- MQTT 클라이언트 (브라우저용, WebSocket 기반) — jsdelivr 우선, 실패 시 unpkg 폴백 -->
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';document.head.appendChild(s);"></script>
 <style>
 :root{
   --primary:#13c56b;
   --primary-d:#0a9d52;
   --primary-l:#3fe28c;
   --mint:#eafff4;
-  --bg:#f3f6f4;
+  --bg:#eef3f0;
   --card:#ffffff;
   --text:#16241d;
   --sub:#7c8b84;
   --alert:#ff5a5f;
   --gold:#ffb300;
-  --shadow:0 10px 30px rgba(19,197,107,.12);
+  --shadow:0 12px 34px rgba(19,197,107,.14);
 }
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Noto Sans KR',sans-serif;-webkit-tap-highlight-color:transparent}
-body{background:#1c2622;display:flex;justify-content:center;align-items:center;min-height:100vh}
+body{background:radial-gradient(circle at 30% 0%,#21342b,#0e1814 70%);display:flex;justify-content:center;align-items:center;min-height:100vh}
 
 /* ===== 앱 프레임 ===== */
-.app{width:100%;max-width:420px;height:100vh;max-height:880px;background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.app{width:100%;max-width:640px;height:100vh;height:100dvh;max-height:none;background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.55);border-radius:0}
+/* 태블릿/큰 화면에서는 앱이 화면을 꽉 채우도록 */
+@media(min-width:560px){ .app{max-width:100%} }
 
 /* ===== 헤더 ===== */
-.header{background:linear-gradient(135deg,var(--primary),var(--primary-d));padding:16px 20px 18px;color:#fff;position:relative;z-index:20;box-shadow:0 4px 20px rgba(10,157,82,.25)}
+.header{background:linear-gradient(135deg,#0fb863 0%,var(--primary-d) 70%,#08894a);padding:18px 20px 20px;color:#fff;position:relative;z-index:20;box-shadow:0 6px 26px rgba(10,157,82,.3);overflow:hidden}
+.header::before{content:'';position:absolute;top:-60px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(255,255,255,.18),transparent 70%);border-radius:50%}
+.header::after{content:'';position:absolute;bottom:-50px;left:-30px;width:120px;height:120px;background:radial-gradient(circle,rgba(255,255,255,.1),transparent 70%);border-radius:50%}
+.header>*{position:relative;z-index:1}
 .header .top{display:flex;align-items:center;justify-content:space-between}
 .logo{display:flex;align-items:center;gap:8px;font-size:21px;font-weight:900;letter-spacing:-.5px}
-.logo i{background:#fff;color:var(--primary);width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 10px rgba(0,0,0,.15)}
+.logo i{background:#fff;color:var(--primary);width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 6px 14px rgba(0,0,0,.2)}
 .logo span{font-weight:400;opacity:.9}
 .conn{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;background:rgba(255,255,255,.18);padding:6px 11px;border-radius:20px;backdrop-filter:blur(4px)}
 .conn-dot{width:8px;height:8px;border-radius:50%;background:#cfd8d3;transition:.3s}
@@ -40,56 +45,100 @@ body{background:#1c2622;display:flex;justify-content:center;align-items:center;m
 .conn-dot.connecting{background:var(--gold)}
 @keyframes pulse{50%{opacity:.35}}
 .header .sub{margin-top:12px;font-size:12.5px;opacity:.92;display:flex;align-items:center;gap:6px}
+.header .sub .owner-link{margin-left:auto}
+.owner-overlay{position:absolute;inset:0;z-index:120;background:var(--bg);display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.22,1,.36,1);pointer-events:none}
+.owner-overlay.show{transform:translateY(0);pointer-events:auto}
+.owner-bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:linear-gradient(135deg,#0fb863,var(--primary-d));color:#fff;font-weight:800;font-size:14px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.owner-bar i{margin-right:5px}
+.owner-close{background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.owner-frame{flex:1 1 auto;width:100%;border:none;background:#fff}
+
+/* ===== 전광판 티커 ===== */
+.ticker-wrap{background:#0e2017;overflow:hidden;position:relative;z-index:19;border-bottom:1px solid rgba(255,255,255,.06)}
+.ticker-wrap .tag{position:absolute;top:0;left:0;bottom:0;background:var(--alert);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;gap:5px;padding:0 10px;z-index:2;box-shadow:6px 0 10px -4px rgba(0,0,0,.4)}
+.ticker-track{display:flex;white-space:nowrap;padding:8px 0 8px 86px;animation:ticker 22s linear infinite}
+.ticker-track:hover{animation-play-state:paused}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.tick-item{display:inline-flex;align-items:center;gap:6px;color:#e8f5ee;font-size:12px;margin-right:28px;flex-shrink:0;cursor:pointer}
+.tick-item:active{opacity:.6}
+.tick-item b{color:var(--primary-l)}
+.tick-item .store{color:#9fb3a9}
 
 /* ===== 화면 ===== */
 .screen{flex:1;overflow-y:auto;display:none;position:relative}
 .screen.active{display:block}
 .screen::-webkit-scrollbar{display:none}
 
-/* ===== 레이더 ===== */
-.radar-wrap{position:relative;height:340px;background:radial-gradient(circle at 50% 45%,#dff7ea 0%,#eef4f0 70%);overflow:hidden;display:flex;align-items:center;justify-content:center}
-.ring{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:1.5px solid rgba(19,197,107,.18)}
-.ring.r1{width:120px;height:120px}
-.ring.r2{width:220px;height:220px}
-.ring.r3{width:320px;height:320px;border-style:dashed}
-.sweep{position:absolute;top:45%;left:50%;width:160px;height:160px;transform-origin:0 0;background:conic-gradient(from 0deg,rgba(19,197,107,0) 0%,rgba(19,197,107,.45) 90%,rgba(19,197,107,.7) 100%);border-radius:0 0 0 160px;animation:spin 3.5s linear infinite}
-@keyframes spin{100%{transform:rotate(360deg)}}
-.me{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;background:var(--primary);border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 4px rgba(19,197,107,.25),0 4px 12px rgba(19,197,107,.5);z-index:5}
-.me::after{content:'';position:absolute;inset:-14px;border-radius:50%;border:2px solid var(--primary);opacity:0;animation:ping 2s ease-out infinite}
-@keyframes ping{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.8);opacity:0}}
+/* ===== 지도 (확대/축소 + 드래그 가능) ===== */
+.map-wrap{position:relative;height:320px;overflow:hidden;background:#d9e6df;touch-action:none;cursor:grab}
+.map-wrap.dragging{cursor:grabbing}
+.map-inner{position:absolute;top:50%;left:50%;width:900px;height:900px;margin:-450px 0 0 -450px;transform-origin:50% 50%;background:
+  linear-gradient(0deg,rgba(19,197,107,.08) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(19,197,107,.08) 1px,transparent 1px),
+  linear-gradient(0deg,rgba(255,255,255,.5) 7px,transparent 7px),
+  linear-gradient(90deg,rgba(255,255,255,.5) 7px,transparent 7px),
+  radial-gradient(circle at 50% 50%,#eafaf1 0%,#d3e3da 75%);
+  background-size:30px 30px,30px 30px,150px 150px,150px 150px,100% 100%}
+.building{position:absolute;border-radius:5px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06),0 4px 8px rgba(0,0,0,.08)}
+/* 인천 지명/지하철/하천 라벨 */
+.road{position:absolute;background:#fff;opacity:.65;border-radius:8px}
+.river{position:absolute;background:linear-gradient(90deg,#bfe0f0,#a9d4ea);opacity:.7;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(120,180,210,.3)}
+.area-lbl{position:absolute;transform:translate(-50%,-50%);font-size:12px;font-weight:900;color:#9fb0a7;white-space:nowrap;letter-spacing:1px;pointer-events:none}
+.subway{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#2a6b9e;background:rgba(255,255,255,.9);padding:3px 7px;border-radius:11px;box-shadow:0 3px 8px rgba(0,0,0,.12);white-space:nowrap}
+.subway .m{width:13px;height:13px;border-radius:50%;background:#2a6b9e;color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
-/* 매장 핀 */
-.pin{position:absolute;background:var(--alert);color:#fff;padding:5px 11px;border-radius:14px;font-size:11px;font-weight:700;transform:scale(0);transition:.35s cubic-bezier(.18,.89,.32,1.28);cursor:pointer;z-index:6;box-shadow:0 6px 16px rgba(255,90,95,.45);white-space:nowrap}
-.pin.show{transform:scale(1)}
-.pin::after{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 5px 0;border-style:solid;border-color:var(--alert) transparent transparent}
-.pin i{margin-right:3px}
-.pin.p1{top:24%;left:62%}
-.pin.p2{top:58%;left:30%}
-.pin.p3{top:36%;left:22%}
+.radar-scan{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:280px;height:280px;border-radius:50%;overflow:hidden;pointer-events:none;-webkit-mask:radial-gradient(circle,#000 70%,transparent 100%);mask:radial-gradient(circle,#000 70%,transparent 100%)}
+.radar-scan::before{content:'';position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(19,197,107,0) 0deg,rgba(19,197,107,0) 250deg,rgba(19,197,107,.12) 320deg,rgba(19,197,107,.55) 358deg,rgba(63,226,140,.7) 360deg);animation:sweep 3.5s linear infinite;filter:blur(.5px)}
+.radar-scan::after{content:'';position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(19,197,107,0) 0deg,rgba(19,197,107,0) 300deg,rgba(19,197,107,.18) 360deg);animation:sweep 3.5s linear infinite;animation-delay:-1.7s}
+@keyframes sweep{100%{transform:rotate(360deg)}}
+.ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:1.5px solid rgba(19,197,107,.22)}
+.ring.r1{width:90px;height:90px}
+.ring.r2{width:180px;height:180px}
+.ring.r3{width:280px;height:280px;border-style:dashed}
+.me{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;background:radial-gradient(circle,#fff 30%,var(--primary) 32%);border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 4px rgba(19,197,107,.25),0 4px 14px rgba(19,197,107,.6);z-index:5}
+.me::after{content:'';position:absolute;inset:-12px;border-radius:50%;border:2px solid var(--primary);opacity:0;animation:ping 2s ease-out infinite}
+@keyframes ping{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.9);opacity:0}}
 
-.radar-hint{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(22,36,29,.85);color:#fff;padding:9px 18px;border-radius:22px;font-size:12px;white-space:nowrap;z-index:8;backdrop-filter:blur(6px);display:flex;align-items:center;gap:7px;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+/* 매장 핀 - 레이더 안/밖 전부 표시 */
+.pin{position:absolute;background:#fff;color:var(--text);padding:5px 10px 5px 6px;border-radius:14px;font-size:10.5px;font-weight:700;transform:translate(-50%,-100%) scale(0);transition:.35s cubic-bezier(.18,.89,.32,1.28);cursor:pointer;z-index:6;box-shadow:0 6px 14px rgba(0,0,0,.18);white-space:nowrap;display:flex;align-items:center;gap:5px;border:1.5px solid #fff}
+.pin.show{transform:translate(-50%,-100%) scale(1)}
+.pin .emo{font-size:13px;flex-shrink:0}
+.pin.hot{background:var(--alert);color:#fff;border-color:var(--alert)}
+.pin.hot .dot{background:#fff;width:6px;height:6px;border-radius:50%;animation:pulse 1s infinite}
+.pin.far{opacity:.92;font-size:10px;background:#eef4f0}
+.pin::after{content:'';position:absolute;bottom:-5px;left:16px;border-width:6px 5px 0;border-style:solid;border-color:inherit transparent transparent}
+
+.radar-hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(22,36,29,.85);color:#fff;padding:8px 16px;border-radius:22px;font-size:11.5px;white-space:nowrap;z-index:8;backdrop-filter:blur(6px);display:flex;align-items:center;gap:7px;box-shadow:0 6px 16px rgba(0,0,0,.2)}
 .radar-hint i{color:var(--primary-l)}
 
+/* 지도 컨트롤 (확대/축소, 내 위치) */
+.map-ctrl{position:absolute;right:12px;bottom:46px;z-index:10;display:flex;flex-direction:column;gap:8px}
+.map-btn{width:36px;height:36px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--text);box-shadow:0 6px 14px rgba(0,0,0,.18);cursor:pointer;border:none}
+.map-btn:active{transform:scale(.92)}
+.map-btn.recenter{color:var(--primary-d)}
+
 /* ===== 주변 딜 리스트 ===== */
-.deals{padding:18px 16px 90px}
+.deals{padding:16px 16px 90px}
 .deals-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .deals-head h2{font-size:16px;color:var(--text);display:flex;align-items:center;gap:7px}
 .deals-head .cnt{background:var(--mint);color:var(--primary-d);font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px}
-.empty{text-align:center;color:var(--sub);padding:40px 20px;font-size:13px;line-height:1.7}
-.empty i{font-size:34px;color:#cfdcd5;display:block;margin-bottom:12px}
+.empty{text-align:center;color:var(--sub);padding:30px 20px;font-size:13px;line-height:1.7}
+.empty i{font-size:30px;color:#cfdcd5;display:block;margin-bottom:10px}
 
-.deal-card{background:var(--card);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow);display:flex;gap:13px;cursor:pointer;border:1px solid #eef3f0;transition:.2s;animation:slideUp .45s cubic-bezier(.18,.89,.32,1.28)}
+.deal-card{background:var(--card);border-radius:20px;padding:15px;margin-bottom:12px;box-shadow:var(--shadow);display:flex;gap:13px;cursor:pointer;border:1px solid #eef3f0;transition:.2s;animation:slideUp .45s cubic-bezier(.18,.89,.32,1.28);position:relative;overflow:hidden}
+.deal-card.live{border-color:var(--primary-l);box-shadow:0 12px 30px rgba(19,197,107,.24)}
+.deal-card.live::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:linear-gradient(var(--primary-l),var(--primary))}
 .deal-card:active{transform:scale(.98)}
 @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.deal-thumb{width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,var(--primary-l),var(--primary));flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;box-shadow:0 6px 14px rgba(19,197,107,.3)}
+.deal-thumb{width:60px;height:60px;border-radius:14px;background:linear-gradient(135deg,var(--primary-l),var(--primary));flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;box-shadow:0 6px 14px rgba(19,197,107,.3)}
 .deal-info{flex:1;min-width:0}
 .deal-store{font-size:11px;color:var(--sub);display:flex;align-items:center;gap:4px}
-.deal-name{font-size:14.5px;font-weight:700;color:var(--text);margin:3px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.deal-name{font-size:14px;font-weight:700;color:var(--text);margin:3px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .deal-price{display:flex;align-items:baseline;gap:7px}
-.deal-price .now{font-size:17px;font-weight:900;color:var(--alert)}
-.deal-price .was{font-size:12px;color:var(--sub);text-decoration:line-through}
-.deal-price .off{font-size:11px;font-weight:700;color:#fff;background:var(--alert);padding:2px 6px;border-radius:7px;margin-left:auto}
-.deal-meta{margin-top:7px;display:flex;align-items:center;gap:10px;font-size:11px;color:var(--sub)}
+.deal-price .now{font-size:16px;font-weight:900;color:var(--alert)}
+.deal-price .was{font-size:11.5px;color:var(--sub);text-decoration:line-through}
+.deal-price .off{font-size:10.5px;font-weight:700;color:#fff;background:var(--alert);padding:2px 6px;border-radius:7px;margin-left:auto}
+.deal-meta{margin-top:7px;display:flex;align-items:center;gap:10px;font-size:10.5px;color:var(--sub)}
 .deal-meta .tmr{color:var(--alert);font-weight:700}
 
 /* ===== 실시간 토스트 ===== */
@@ -135,6 +184,47 @@ body{background:#1c2622;display:flex;justify-content:center;align-items:center;m
 .buy:active{transform:scale(.98)}
 .buy:disabled{background:#c3cdc8;box-shadow:none}
 
+/* ===== 픽업 코드 시트 ===== */
+.pickup-sheet{z-index:220}
+.pickup-check{width:62px;height:62px;border-radius:50%;background:linear-gradient(135deg,var(--primary-l),var(--primary-d));color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;margin:18px auto 0;box-shadow:0 10px 24px rgba(19,197,107,.4);animation:popIn .4s cubic-bezier(.18,.89,.32,1.4)}
+@keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+.pickup-code{font-size:40px;font-weight:900;letter-spacing:10px;color:var(--primary-d);background:var(--mint);border-radius:18px;padding:18px 10px;margin:18px 0;font-variant-numeric:tabular-nums}
+.pickup-info{background:var(--bg);border-radius:14px;padding:4px 16px;text-align:left}
+.pickup-info .prow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #e8eeeb;font-size:13px;color:var(--text)}
+.pickup-info .prow:last-child{border:none}
+.pickup-info .prow i{width:18px;color:var(--primary);text-align:center}
+
+/* ===== 내 예약 내역 (마이페이지) ===== */
+.resv-item{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #f0f4f2;cursor:pointer}
+.resv-item:last-child{border:none}
+.resv-item .emo{font-size:24px;width:38px;text-align:center;flex-shrink:0}
+.resv-item .meta{flex:1;min-width:0}
+.resv-item .nm{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.resv-item .sub{font-size:11px;color:var(--sub);margin-top:2px}
+.resv-badge{font-size:10px;font-weight:700;padding:4px 9px;border-radius:9px;flex-shrink:0}
+.resv-badge.wait{background:var(--mint);color:var(--primary-d)}
+.resv-badge.done{background:#eef2f0;color:var(--sub)}
+.resv-badge.expired{background:#ffeceb;color:var(--alert)}
+.resv-empty{text-align:center;color:var(--sub);font-size:12.5px;padding:14px 0}
+
+/* ===== 카테고리 페이지 ===== */
+.cat-page{padding:18px 16px 90px}
+.cat-head h2{font-size:17px;color:var(--text);display:flex;align-items:center;gap:8px}
+.cat-head h2 i{color:var(--primary)}
+.cat-head p{font-size:12px;color:var(--sub);margin-top:5px}
+.cat-chips{display:flex;gap:8px;overflow-x:auto;padding:14px 0 4px;margin-bottom:6px}
+.cat-chips::-webkit-scrollbar{display:none}
+.cat-chip{flex-shrink:0;background:#fff;border:1.5px solid #e6ece9;border-radius:20px;padding:8px 14px;font-size:12.5px;font-weight:700;color:var(--sub);cursor:pointer;display:flex;align-items:center;gap:6px;transition:.18s}
+.cat-chip.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 8px 18px rgba(19,197,107,.3)}
+.cat-chip .n{font-size:10.5px;background:rgba(0,0,0,.06);padding:1px 6px;border-radius:9px}
+.cat-chip.active .n{background:rgba(255,255,255,.25)}
+.cat-group{margin-top:16px}
+.cat-group-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.cat-group-title .emo{font-size:18px}
+.cat-group-title .cnt{margin-left:auto;font-size:11px;color:var(--sub);font-weight:500}
+.cat-empty{text-align:center;color:var(--sub);padding:40px 20px;font-size:13px;line-height:1.7}
+.cat-empty i{font-size:32px;color:#cfdcd5;display:block;margin-bottom:12px}
+
 /* ===== 마이페이지 ===== */
 .mypage{padding:20px 16px 90px}
 .profile{display:flex;align-items:center;gap:14px;margin-bottom:18px}
@@ -170,16 +260,17 @@ body{background:#1c2622;display:flex;justify-content:center;align-items:center;m
 .menu-item .chev{margin-left:auto;color:#cfdcd5;font-size:12px}
 
 /* ===== 하단 네비 ===== */
-.nav{position:absolute;bottom:0;left:0;right:0;background:#fff;display:flex;border-top:1px solid #eef3f0;z-index:30;padding-bottom:env(safe-area-inset-bottom)}
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);display:flex;border-top:1px solid #e6ece9;z-index:30;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -6px 24px rgba(0,0,0,.06)}
 .nav-item{flex:1;text-align:center;padding:11px 0 13px;color:var(--sub);cursor:pointer;position:relative;transition:.2s}
 .nav-item.active{color:var(--primary)}
+.nav-item.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:32px;height:3px;border-radius:0 0 4px 4px;background:var(--primary)}
 .nav-item i{display:block;font-size:20px;margin-bottom:4px}
 .nav-item span{font-size:11px;font-weight:700}
 .nav-badge{position:absolute;top:6px;left:50%;margin-left:6px;background:var(--alert);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;line-height:16px;border-radius:8px;display:none;padding:0 4px}
 .nav-badge.show{display:block}
 
-/* 데모 버튼 */
-.demo-btn{position:absolute;bottom:74px;right:16px;background:var(--text);color:#fff;border:none;width:auto;padding:11px 16px;border-radius:24px;font-size:12px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.25);cursor:pointer;z-index:25;opacity:.85;display:flex;align-items:center;gap:7px}
+/* 점주 앱 링크 */
+.owner-link{background:rgba(255,255,255,.92);color:var(--primary-d);border:none;padding:6px 11px;border-radius:18px;font-size:11px;font-weight:700;box-shadow:0 4px 10px rgba(0,0,0,.18);cursor:pointer;display:inline-flex;align-items:center;gap:5px;text-decoration:none;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -191,7 +282,13 @@ body{background:#1c2622;display:flex;justify-content:center;align-items:center;m
       <div class="logo"><i class="fas fa-leaf"></i> Save-IT <span>Eat</span></div>
       <div class="conn"><span class="conn-dot connecting" id="connDot"></span><span id="connText">연결 중</span></div>
     </div>
-    <div class="sub"><i class="fas fa-location-dot"></i> 인천 계양구 · 반경 500m 실시간 감지 중</div>
+    <div class="sub"><i class="fas fa-location-dot"></i> 내 주변 500m · 실시간 마감할인 감지 중</div>
+  </div>
+
+  <!-- 전광판 티커 -->
+  <div class="ticker-wrap">
+    <div class="tag"><i class="fas fa-bolt"></i> 실시간</div>
+    <div class="ticker-track" id="tickerTrack"></div>
   </div>
 
   <!-- 실시간 토스트 -->
@@ -204,15 +301,25 @@ body{background:#1c2622;display:flex;justify-content:center;align-items:center;m
     <p id="toastDesc">상품 정보를 수신했습니다.</p>
   </div>
 
-  <!-- 탭: 레이더 -->
+
+  <!-- 탭: 지도 -->
   <div class="screen active" id="tab-map">
-    <div class="radar-wrap">
-      <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
-      <div class="sweep"></div>
-      <div class="me"></div>
-      <div class="pin p1" id="pin1" onclick="openSheet(0)"><i class="fas fa-store"></i><span class="pinTxt">탐색 중</span></div>
-      <div class="pin p2" id="pin2" onclick="openSheet(1)"><i class="fas fa-store"></i> GS25</div>
-      <div class="pin p3" id="pin3" onclick="openSheet(2)"><i class="fas fa-store"></i> CU</div>
+    <div class="map-wrap" id="mapWrap">
+      <div class="map-inner" id="mapInner">
+        <div id="roads"></div>
+        <div id="buildings"></div>
+        <div id="mapLabels"></div>
+        <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+        <div class="radar-scan"></div>
+        <div class="me"></div>
+        <div id="nearbyPins"></div>
+        <div id="hotPins"></div>
+      </div>
+      <div class="map-ctrl">
+        <button class="map-btn" onclick="mapZoom(1)"><i class="fas fa-plus"></i></button>
+        <button class="map-btn" onclick="mapZoom(-1)"><i class="fas fa-minus"></i></button>
+        <button class="map-btn recenter" onclick="mapRecenter()"><i class="fas fa-location-crosshairs"></i></button>
+      </div>
       <div class="radar-hint" id="radarHint"><i class="fas fa-satellite-dish"></i> 주변 매장을 실시간으로 감지하고 있습니다</div>
     </div>
 
@@ -228,7 +335,18 @@ body{background:#1c2622;display:flex;justify-content:center;align-items:center;m
         </div>
       </div>
     </div>
-    <button class="demo-btn" onclick="simulateScan()"><i class="fas fa-barcode"></i> 데모 스캔</button>
+  </div>
+
+  <!-- 탭: 카테고리 -->
+  <div class="screen" id="tab-cat">
+    <div class="cat-page">
+      <div class="cat-head">
+        <h2><i class="fas fa-layer-group"></i> 카테고리별 마감할인</h2>
+        <p>지금 사이트에 올라온 상품을 종류별로 모아봤어요</p>
+      </div>
+      <div class="cat-chips" id="catChips"></div>
+      <div id="catList"></div>
+    </div>
   </div>
 
   <!-- 탭: 마이페이지 -->
@@ -254,6 +372,11 @@ body{background:#1c2622;display:flex;justify-content:center;align-items:center;m
         <div class="stat"><div class="n">23</div><div class="t">구한 음식</div></div>
         <div class="stat"><div class="n">5.8만</div><div class="t">아낀 금액</div></div>
         <div class="stat"><div class="n">3개</div><div class="t">받은 도장</div></div>
+      </div>
+
+      <div class="card-box">
+        <h3><i class="fas fa-ticket"></i> 내 예약 내역</h3>
+        <div id="resvList"><div class="resv-empty">아직 예약한 상품이 없어요</div></div>
       </div>
 
       <div class="card-box">
@@ -310,11 +433,44 @@ body{background:#1c2622;display:flex;justify-content:center;align-items:center;m
     </div>
   </div>
 
+  <!-- 매장별 모아보기 시트 (한 매장에 여러 마감할인이 뭉쳐있을 때) -->
+  <div class="sheet-bg" id="storeBg" onclick="closeStoreSheet()"></div>
+  <div class="sheet" id="storeSheet">
+    <div class="sheet-grab"></div>
+    <div class="sheet-scroll">
+      <h3 style="font-size:17px;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:7px" id="storeSheetTitle"><i class="fas fa-store"></i> 매장명</h3>
+      <p style="font-size:12px;color:var(--sub);margin-bottom:14px" id="storeSheetSub">지금 올라온 마감할인 상품</p>
+      <div id="storeSheetList"></div>
+    </div>
+  </div>
+
+  <!-- 픽업 코드 시트 (예약 완료 후) -->
+  <div class="sheet-bg" id="pickupBg" onclick="closePickup()"></div>
+  <div class="sheet pickup-sheet" id="pickupSheet">
+    <div class="sheet-grab"></div>
+    <div class="sheet-scroll" style="text-align:center">
+      <div class="pickup-check"><i class="fas fa-check"></i></div>
+      <h3 style="margin-top:14px;font-size:18px;color:var(--text)">예약이 완료됐어요!</h3>
+      <p style="font-size:12.5px;color:var(--sub);margin-top:5px">매장 직원에게 아래 코드를 보여주세요</p>
+      <div class="pickup-code" id="pickupCode">0000</div>
+      <div class="pickup-info">
+        <div class="prow"><i class="fas fa-store"></i> <span id="pStore">GS25 계양구청점</span></div>
+        <div class="prow"><i class="fas fa-bag-shopping"></i> <span id="pName">참치마요 삼각김밥</span></div>
+        <div class="prow"><i class="fas fa-hourglass-half"></i> <span id="pTimer">픽업 마감까지 01:30:00</span></div>
+      </div>
+      <div class="eco-note" style="margin-top:16px"><i class="fas fa-seedling"></i> <span>마감 전까지 매장에 방문해서 픽업해주세요. 시간이 지나면 예약이 자동 취소됩니다.</span></div>
+      <button class="buy" style="margin-top:16px" onclick="closePickup()">확인</button>
+    </div>
+  </div>
+
   <!-- 네비 -->
   <div class="nav">
     <div class="nav-item active" data-tab="map" onclick="changeTab('map',this)">
       <i class="fas fa-satellite-dish"></i><span>레이더</span>
       <span class="nav-badge" id="mapBadge">N</span>
+    </div>
+    <div class="nav-item" data-tab="cat" onclick="changeTab('cat',this)">
+      <i class="fas fa-layer-group"></i><span>카테고리</span>
     </div>
     <div class="nav-item" data-tab="my" onclick="changeTab('my',this)">
       <i class="fas fa-user-circle"></i><span>마이페이지</span>
@@ -325,21 +481,44 @@ body{background:#1c2622;display:flex;justify-content:center;align-items:center;m
 <script>
 /* =========================================================
    Save-IT 실시간 수신 로직 (MQTT over WebSocket)
-   점주 EV3 컬러센서 → 파이썬 publish → 이 웹앱이 구독 → 팝업
+   점주 화면(owner.html) 또는 EV3/파이썬 → publish → 이 웹앱이 구독 → 팝업
    ========================================================= */
-const MQTT_BROKER="wss://broker.hivemq.com:8884/mqtt";
+const MQTT_BROKER="wss://broker.emqx.io:8084/mqtt";
 const MQTT_TOPIC ="saveit/store/gyeyang/scan";
 
-let mqttClient=null, deals=[], timerInt=null, openIdx=0;
+let mqttClient=null, deals=[], openIdx=0, openIsNearby=false, openItem=null, myReservations=[], resvSeq=0;
 const EMOJI={ "삼각김밥":"🍙","김밥":"🍙","샌드위치":"🥪","요거트":"🥛","도시락":"🍱","빵":"🥐","우유":"🥛","커피":"☕" };
 
 function pickEmoji(name){ for(const k in EMOJI){ if(name && name.indexOf(k)>=0) return EMOJI[k]; } return "🍽️"; }
+
+/* 카테고리 분류 (이모지+라벨) */
+const CATS=[
+  {key:"도시락",emoji:"🍱",label:"도시락",kw:["도시락"]},
+  {key:"김밥",emoji:"🍙",label:"김밥·삼각김밥",kw:["삼각김밥","김밥"]},
+  {key:"샌드위치",emoji:"🥪",label:"샌드위치·버거",kw:["샌드위치","버거"]},
+  {key:"베이커리",emoji:"🥐",label:"베이커리",kw:["빵"]},
+  {key:"유제품",emoji:"🥛",label:"유제품",kw:["우유","요거트"]},
+  {key:"음료",emoji:"☕",label:"음료",kw:["커피","주스"]},
+  {key:"기타",emoji:"🍽️",label:"기타",kw:[]}
+];
+function catOf(d){
+  const name=d.product||"";
+  if(d.category){ const c=CATS.find(c=>c.key===d.category||c.kw.includes(d.category)); if(c) return c; }
+  for(const c of CATS){ for(const k of c.kw){ if(name.indexOf(k)>=0) return c; } }
+  return CATS[CATS.length-1];
+}
 function fmtTime(sec){ let h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=Math.floor(sec%60); const p=n=>n<10?"0"+n:n; return p(h)+":"+p(m)+":"+p(s); }
 function calcOff(now,was){ const n=parseInt((now||"").replace(/[^0-9]/g,"")),w=parseInt((was||"").replace(/[^0-9]/g,"")); if(!n||!w) return "50% OFF"; return Math.round((1-n/w)*100)+"% OFF"; }
 
 function setConn(state,text){ document.getElementById('connDot').className='conn-dot '+state; document.getElementById('connText').textContent=text; }
 
+let mqttWaitTries=0;
 function initMqtt(){
+  if(typeof mqtt==='undefined'){
+    setConn('connecting','라이브러리 로드 중');
+    if(mqttWaitTries++<40){ setTimeout(initMqtt,300); return; }
+    setConn('','네트워크 연결 필요'); return;
+  }
   setConn('connecting','연결 중');
   try{
     mqttClient=mqtt.connect(MQTT_BROKER,{clientId:'saveit-app-'+Math.random().toString(16).substr(2,8),reconnectPeriod:2000,connectTimeout:8000});
@@ -348,7 +527,174 @@ function initMqtt(){
     mqttClient.on('offline',()=>setConn('','오프라인'));
     mqttClient.on('error',()=>setConn('','연결 오류'));
     mqttClient.on('message',(t,pl)=>{ let d; try{ d=JSON.parse(pl.toString()); }catch(e){ d={}; } receiveDeal(d); });
-  }catch(e){ setConn('','연결 불가 (데모 버튼 사용)'); }
+  }catch(e){ setConn('','연결 불가'); }
+}
+
+/* ===== 점주가 따로 올리지 않아도 항상 떠 있는 "다른 편의점" 마감할인 (지도 핀 + 전광판용) ===== */
+const NEARBY=[
+  {store:"세븐일레븐 효성점",product:"불고기 도시락",price:"3,200원",origPrice:"5,900원",dist:"도보 7분 · 540m",x:-260,y:-170,qty:2,expiry:"오늘 22:30 까지",seconds:4200},
+  {store:"이마트24 작전점",product:"크림빵 2개",price:"1,400원",origPrice:"2,800원",dist:"도보 9분 · 690m",x:300,y:-230,qty:4,expiry:"오늘 23:30 까지",seconds:5800},
+  {store:"CU 임학점",product:"우유 1L",price:"1,100원",origPrice:"2,200원",dist:"도보 5분 · 380m",x:330,y:200,qty:6,expiry:"오늘 21:00 까지",seconds:3100},
+  {store:"CU 임학점",product:"제육 도시락",price:"2,900원",origPrice:"5,500원",dist:"도보 5분 · 380m",x:330,y:230,qty:1,expiry:"오늘 21:00 까지",seconds:3100},
+  {store:"세븐일레븐 박촌역점",product:"참치김밥 1개",price:"900원",origPrice:"1,800원",dist:"도보 11분 · 850m",x:-350,y:260,qty:3,expiry:"오늘 20:30 까지",seconds:1900},
+  {store:"GS25 둑실점",product:"바나나우유 1개",price:"700원",origPrice:"1,400원",dist:"도보 8분 · 610m",x:-80,y:-320,qty:5,expiry:"오늘 23:00 까지",seconds:5200}
+];
+NEARBY.forEach((d,i)=>d._id='n'+i);
+let dealSeq=0;
+
+function renderTicker(){
+  const all=[...deals,...NEARBY];
+  const make=d=>{
+    const isNearby=NEARBY.includes(d);
+    const idx=isNearby?NEARBY.indexOf(d):deals.indexOf(d);
+    return `<span class="tick-item" onclick="openSheet(${idx},${isNearby})">${catOf(d).emoji} <b>${calcOff(d.price,d.origPrice)}</b> ${d.product} <span class="store">· ${d.store}</span></span>`;
+  };
+  const html=all.map(make).join('');
+  document.getElementById('tickerTrack').innerHTML=html+html; // 이어붙여 끊김없이 순환
+}
+
+/* ===== 카테고리 화면 ===== */
+let catFilter="all";
+function dealCard(d){
+  const isNearby=NEARBY.includes(d);
+  const idx=isNearby?NEARBY.indexOf(d):deals.indexOf(d);
+  return `<div class="deal-card ${isNearby?'':'live'}" onclick="openSheet(${idx},${isNearby})">
+      <div class="deal-thumb">${catOf(d).emoji}</div>
+      <div class="deal-info">
+        <div class="deal-store"><i class="fas fa-store"></i> ${d.store}</div>
+        <div class="deal-name">${d.product}</div>
+        <div class="deal-price">
+          <span class="now">${d.price}</span>
+          <span class="was">${d.origPrice}</span>
+          <span class="off">${calcOff(d.price,d.origPrice)}</span>
+        </div>
+        <div class="deal-meta"><span class="tmr" data-tmr="${d._id}"><i class="fas fa-clock"></i> ${fmtTime(d.seconds)}</span><span><i class="fas fa-person-walking"></i> ${d.dist}</span></div>
+      </div>
+    </div>`;
+}
+function renderCategories(){
+  const all=[...deals,...NEARBY];
+  // 칩
+  const chips=[{key:"all",emoji:"🛒",label:"전체"}].concat(
+    CATS.filter(c=>all.some(d=>catOf(d).key===c.key))
+  );
+  document.getElementById('catChips').innerHTML=chips.map(c=>{
+    const n=c.key==="all"?all.length:all.filter(d=>catOf(d).key===c.key).length;
+    return `<div class="cat-chip ${catFilter===c.key?'active':''}" onclick="setCatFilter('${c.key}')">${c.emoji} ${c.label} <span class="n">${n}</span></div>`;
+  }).join('');
+  // 목록
+  const box=document.getElementById('catList');
+  if(!all.length){ box.innerHTML='<div class="cat-empty"><i class="fas fa-box-open"></i>아직 올라온 상품이 없어요.<br>점주가 스캐너로 상품을 찍으면 여기에 모여요!</div>'; return; }
+  const groups=CATS.filter(c=> catFilter==="all"?all.some(d=>catOf(d).key===c.key):c.key===catFilter);
+  box.innerHTML=groups.map(c=>{
+    const items=all.filter(d=>catOf(d).key===c.key);
+    if(!items.length) return '';
+    return `<div class="cat-group">
+      <div class="cat-group-title"><span class="emo">${c.emoji}</span> ${c.label}<span class="cnt">${items.length}개</span></div>
+      ${items.map(dealCard).join('')}
+    </div>`;
+  }).join('');
+}
+function setCatFilter(k){ catFilter=k; renderCategories(); }
+
+/* ===== 도시 도로망(격자 블록 느낌) ===== */
+function renderMapGeo(){
+  let roads='';
+  // 가로/세로 도로를 일정 간격으로 깔아 도시 블록처럼
+  for(let i=-3;i<=3;i++){
+    const off=i*120;
+    roads+=`<div class="road" style="left:0;top:${450+off-5}px;width:900px;height:${i%2===0?14:9}px"></div>`;
+    roads+=`<div class="road" style="left:${450+off-5}px;top:0;width:${i%2===0?14:9}px;height:900px"></div>`;
+  }
+  document.getElementById('roads').innerHTML=roads;
+  document.getElementById('mapLabels').innerHTML='';
+}
+
+/* ===== 지도: 도시 건물 렌더링 (블록 안을 빌딩으로 채움) ===== */
+function renderBuildings(){
+  const colors=['#cdddd3','#c0d6c9','#d4e1d8','#bcd3c5','#c8dace','#d8e6dd'];
+  let html='';
+  for(let bx=-3;bx<=2;bx++){
+    for(let by=-3;by<=2;by++){
+      const cx=bx*120+60, cy=by*120+60; // 블록 중심
+      if(Math.abs(cx)<90 && Math.abs(cy)<90) continue; // 중앙(내 위치)은 비움
+      const n=1+Math.floor(Math.random()*2);
+      for(let k=0;k<n;k++){
+        const w=34+Math.random()*48, h=34+Math.random()*48;
+        const jx=(Math.random()*40-20), jy=(Math.random()*40-20);
+        const tall=Math.random()<.3;
+        html+=`<div class="building" style="width:${w}px;height:${h}px;left:${450+cx+jx-w/2}px;top:${450+cy+jy-h/2}px;background:${colors[(bx+by+6)%colors.length]};${tall?'box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 8px 16px rgba(0,0,0,.14);':''}transform:rotate(${(Math.random()*4-2).toFixed(1)}deg)"></div>`;
+      }
+    }
+  }
+  document.getElementById('buildings').innerHTML=html;
+}
+
+function renderNearbyPins(){
+  document.getElementById('nearbyPins').innerHTML=NEARBY.map((d,i)=>`
+    <div class="pin far show" style="left:${450+d.x}px;top:${450+d.y}px" onclick="openSheet(${i},true)">
+      <span class="emo">${pickEmoji(d.product)}</span>${d.store.replace(/ .*/,'')} · ${calcOff(d.price,d.origPrice)}
+    </div>`).join('');
+}
+
+/* 같은 매장에서 올라온 마감할인은 지도에서 한 곳에 뭉쳐서 표시 */
+const storePins={};
+function getStoreCoord(store){
+  if(storePins[store]) return storePins[store];
+  let hash=0; for(let i=0;i<store.length;i++) hash=(hash*31+store.charCodeAt(i))>>>0;
+  const ang=(hash%360)*Math.PI/180, r=70+(hash%3)*35;
+  const coord={x:Math.cos(ang)*r,y:Math.sin(ang)*r};
+  storePins[store]=coord;
+  return coord;
+}
+function offPercent(d){ const n=parseInt(calcOff(d.price,d.origPrice)); return isNaN(n)?0:n; }
+function renderHotPins(){
+  const groups={};
+  deals.forEach((d,i)=>{ (groups[d.store]=groups[d.store]||[]).push(i); });
+  document.getElementById('hotPins').innerHTML=Object.keys(groups).map(store=>{
+    const idxs=groups[store];
+    const items=idxs.map(i=>deals[i]);
+    const coord=getStoreCoord(store);
+    const shortName=store.replace(/ .*/,'');
+    const offLbl=idxs.length>1
+      ? `최대 ${Math.max(...items.map(offPercent))}% OFF · ${idxs.length}건`
+      : calcOff(items[0].price,items[0].origPrice);
+    const click=idxs.length>1?`openStoreSheet('${store.replace(/'/g,"\\'")}')`:`openSheet(${idxs[0]},false)`;
+    return `<div class="pin hot show" style="left:${450+coord.x}px;top:${450+coord.y}px" onclick="${click}">
+      <span class="emo">${pickEmoji(items[0].product)}</span><span class="dot"></span>${shortName} · ${offLbl}
+    </div>`;
+  }).join('');
+}
+
+/* 뭉쳐있는 매장 핀을 누르면 그 매장의 모든 상품을 나열 */
+function openStoreSheet(store){
+  const items=deals.filter(d=>d.store===store);
+  document.getElementById('storeSheetTitle').innerHTML=`<i class="fas fa-store"></i> ${store}`;
+  document.getElementById('storeSheetSub').textContent=items.length+"건의 마감할인이 올라왔어요 · 상품을 탭하면 자세히 볼 수 있어요";
+  document.getElementById('storeSheetList').innerHTML=items.map(dealCard).join('');
+  document.getElementById('storeBg').classList.add('show');
+  document.getElementById('storeSheet').classList.add('show');
+}
+function closeStoreSheet(){
+  document.getElementById('storeBg').classList.remove('show');
+  document.getElementById('storeSheet').classList.remove('show');
+}
+
+/* ===== 지도 확대/축소/이동 ===== */
+let mapScale=1, mapX=0, mapY=0, dragging=false, dragSX=0, dragSY=0, dragOX=0, dragOY=0;
+function applyMapTransform(){ document.getElementById('mapInner').style.transform=`translate(${mapX}px,${mapY}px) scale(${mapScale})`; }
+function mapZoom(dir){ mapScale=Math.max(.55,Math.min(2.4,mapScale+dir*.25)); applyMapTransform(); }
+function mapRecenter(){ mapScale=1; mapX=0; mapY=0; applyMapTransform(); }
+function initMapDrag(){
+  const wrap=document.getElementById('mapWrap');
+  const start=(x,y)=>{ dragging=true; dragSX=x; dragSY=y; dragOX=mapX; dragOY=mapY; wrap.classList.add('dragging'); };
+  const move=(x,y)=>{ if(!dragging) return; mapX=dragOX+(x-dragSX); mapY=dragOY+(y-dragSY); applyMapTransform(); };
+  const end=()=>{ dragging=false; wrap.classList.remove('dragging'); };
+  wrap.addEventListener('pointerdown',e=>start(e.clientX,e.clientY));
+  wrap.addEventListener('pointermove',e=>move(e.clientX,e.clientY));
+  wrap.addEventListener('pointerup',end);
+  wrap.addEventListener('pointerleave',end);
+  wrap.addEventListener('wheel',e=>{ e.preventDefault(); mapZoom(e.deltaY<0?1:-1); },{passive:false});
 }
 
 /* 새 딜 수신 */
@@ -363,9 +709,13 @@ function receiveDeal(data){
     seconds:  data.seconds  ||5400,
     dist:     data.dist     ||"도보 4분 · 320m"
   };
+  deal._id='d'+(dealSeq++);
   deals.unshift(deal);
   renderDeals();
-  showPins();
+  renderTicker();
+  renderCategories();
+  renderHotPins();
+  showHint();
   showToast(deal);
   notify();
   if(!document.getElementById('tab-map').classList.contains('active'))
@@ -375,9 +725,9 @@ function receiveDeal(data){
 function renderDeals(){
   const list=document.getElementById('dealList');
   document.getElementById('dealCnt').textContent=deals.length+"건";
-  if(!deals.length){ return; }
+  if(!deals.length){ list.innerHTML='<div class="empty" id="emptyMsg"><i class="fas fa-satellite-dish"></i>아직 등록된 마감할인이 없어요.<br>점주가 상품을 스캔하면 여기에 실시간으로 떠요!</div>'; return; }
   list.innerHTML=deals.map((d,i)=>`
-    <div class="deal-card" onclick="openSheet(${i})">
+    <div class="deal-card live" onclick="openSheet(${i})">
       <div class="deal-thumb">${pickEmoji(d.product)}</div>
       <div class="deal-info">
         <div class="deal-store"><i class="fas fa-store"></i> ${d.store}</div>
@@ -387,19 +737,13 @@ function renderDeals(){
           <span class="was">${d.origPrice}</span>
           <span class="off">${calcOff(d.price,d.origPrice)}</span>
         </div>
-        <div class="deal-meta"><span class="tmr"><i class="fas fa-clock"></i> ${fmtTime(d.seconds)}</span><span><i class="fas fa-person-walking"></i> ${d.dist}</span></div>
+        <div class="deal-meta"><span class="tmr" data-tmr="${d._id}"><i class="fas fa-clock"></i> ${fmtTime(d.seconds)}</span><span><i class="fas fa-person-walking"></i> ${d.dist}</span></div>
       </div>
     </div>`).join('');
 }
 
-function showPins(){
-  const hint=document.getElementById('radarHint');
-  document.getElementById('pin1').classList.add('show');
-  const t=document.querySelector('#pin1 .pinTxt');
-  if(t && deals[0]) t.textContent=deals[0].store.replace(/ .*/,'');
-  if(deals.length>1) document.getElementById('pin2').classList.add('show');
-  if(deals.length>2) document.getElementById('pin3').classList.add('show');
-  hint.innerHTML='<i class="fas fa-bell"></i> 새 마감할인 상품이 도착했어요!';
+function showHint(){
+  document.getElementById('radarHint').innerHTML='<i class="fas fa-bell"></i> 새 마감할인 상품이 도착했어요!';
 }
 
 function showToast(d){
@@ -430,13 +774,16 @@ function changeTab(tab,el){
   document.getElementById('tab-'+tab).classList.add('active');
   el.classList.add('active');
   if(tab==='map') document.getElementById('mapBadge').classList.remove('show');
+  if(tab==='cat') renderCategories();
 }
 
-/* 상세 시트 */
-function openSheet(i){
-  if(!deals.length){ simulateScan(); i=0; }
-  openIdx=(typeof i==='number' && deals[i])?i:0;
-  const d=deals[openIdx];
+/* 상세 시트 - isNearby=true면 항상-표시되는 다른 편의점 딜, false면 실시간 스캔 딜 */
+function openSheet(i,isNearby){
+  const source=isNearby?NEARBY:deals;
+  if(!source.length) return;
+  openIdx=(typeof i==='number' && source[i])?i:0;
+  openIsNearby=!!isNearby;
+  const d=source[openIdx];
   document.getElementById('sEmoji').textContent=pickEmoji(d.product);
   document.getElementById('sStore').textContent=d.store;
   document.getElementById('sName').textContent=d.product;
@@ -448,45 +795,125 @@ function openSheet(i){
   document.getElementById('sDist').textContent=d.dist;
   const buy=document.getElementById('buyBtn'); buy.disabled=false; buy.textContent="반값에 예약하기";
   document.getElementById('toast').classList.remove('show');
+  closeStoreSheet();
   document.getElementById('sheetBg').classList.add('show');
   document.getElementById('sheet').classList.add('show');
-  startTimer(d.seconds);
+  openItem=d;
+  updateSheetTimer();
 }
 function closeSheet(){
   document.getElementById('sheet').classList.remove('show');
   document.getElementById('sheetBg').classList.remove('show');
-  clearInterval(timerInt);
+  openItem=null;
 }
-function startTimer(dur){
-  clearInterval(timerInt);
-  let t=dur; const el=document.getElementById('sTimer');
-  const tick=()=>{ el.textContent=fmtTime(t); if(--t<0){ clearInterval(timerInt); el.textContent="폐기됨"; const b=document.getElementById('buyBtn'); b.disabled=true; b.textContent="마감되었습니다"; } };
-  tick(); timerInt=setInterval(tick,1000);
+function updateSheetTimer(){
+  if(!openItem) return;
+  const el=document.getElementById('sTimer');
+  if(openItem.seconds>0){ el.textContent=fmtTime(openItem.seconds); }
+  else{ el.textContent="폐기됨"; const b=document.getElementById('buyBtn'); b.disabled=true; b.textContent="마감되었습니다"; }
+}
+
+/* ===== 전역 1초 타이머: 모든 상품/예약의 남은 시간을 계속 줄임 ===== */
+function globalTick(){
+  [...deals,...NEARBY].forEach(d=>{ if(d.seconds>0) d.seconds--; });
+  document.querySelectorAll('[data-tmr]').forEach(el=>{
+    const id=el.getAttribute('data-tmr');
+    const d=[...deals,...NEARBY].find(x=>x._id===id);
+    if(!d) return;
+    el.innerHTML = d.seconds>0 ? '<i class="fas fa-clock"></i> '+fmtTime(d.seconds) : '<i class="fas fa-ban"></i> 마감됨';
+  });
+  updateSheetTimer();
+
+  let resvChanged=false;
+  myReservations.forEach(r=>{
+    if(r.status==='wait'){
+      r.seconds--;
+      if(r.seconds<=0){ r.status='expired'; resvChanged=true; }
+    }
+  });
+  if(resvChanged) renderReservations();
+  if(activePickup && activePickup.status==='wait'){
+    document.getElementById('pTimer').textContent="픽업 마감까지 "+fmtTime(activePickup.seconds);
+  }
 }
 function purchase(){
   const b=document.getElementById('buyBtn');
   b.textContent="✓ 예약 완료! 매장 POS로 전송됨"; b.disabled=true;
+  const d=openItem;
   setTimeout(()=>{
     closeSheet();
-    deals.splice(openIdx,1);
-    renderDeals();
-    if(!deals.length){
-      document.getElementById('dealList').innerHTML='<div class="empty"><i class="fas fa-satellite-dish"></i>아직 등록된 마감할인이 없어요.<br>점주가 상품을 스캔하면 여기에 실시간으로 떠요!</div>';
-      ['pin1','pin2','pin3'].forEach(p=>document.getElementById(p).classList.remove('show'));
-      document.getElementById('radarHint').innerHTML='<i class="fas fa-satellite-dish"></i> 주변 매장을 실시간으로 감지하고 있습니다';
+    if(!openIsNearby){
+      deals.splice(openIdx,1);
+      renderDeals();
+      renderTicker();
+      renderCategories();
+      renderHotPins();
+      if(!deals.length) document.getElementById('radarHint').innerHTML='<i class="fas fa-satellite-dish"></i> 주변 매장을 실시간으로 감지하고 있습니다';
     }
+    openPickup(d);
   },900);
 }
 
-/* 데모 폴백 (MQTT 없이 버튼으로 시연) */
-const DEMOS=[
-  {store:"GS25 계양구청점",product:"참치마요 삼각김밥 3개",price:"1,800원",origPrice:"3,600원",qty:3,expiry:"오늘 23:00 까지",seconds:5400,dist:"도보 4분 · 320m"},
-  {store:"GS25 계양구청점",product:"햄치즈 샌드위치 2개",price:"1,950원",origPrice:"3,900원",qty:2,expiry:"오늘 22:00 까지",seconds:3600,dist:"도보 6분 · 480m"},
-  {store:"CU 작전중앙점",product:"그릭요거트 1개",price:"1,500원",origPrice:"3,000원",qty:1,expiry:"오늘 21:00 까지",seconds:2700,dist:"도보 3분 · 210m"}
-];
-let demoI=0;
-function simulateScan(){ receiveDeal(DEMOS[demoI%DEMOS.length]); demoI++; }
+/* ===== 예약 완료 → 픽업 코드 발급 ===== */
+function openPickup(d){
+  const resv={
+    _id:'r'+(resvSeq++), store:d.store, product:d.product, emoji:catOf(d).emoji,
+    code:String(Math.floor(1000+Math.random()*9000)),
+    seconds: d.seconds>0 ? d.seconds : 1800,
+    status:'wait'
+  };
+  myReservations.unshift(resv);
+  renderReservations();
+  showPickup(resv);
+}
+function showPickup(resv){
+  document.getElementById('pickupCode').textContent=resv.code;
+  document.getElementById('pStore').textContent=resv.store;
+  document.getElementById('pName').textContent=resv.product;
+  document.getElementById('pTimer').textContent="픽업 마감까지 "+fmtTime(resv.seconds);
+  document.getElementById('pickupBg').classList.add('show');
+  document.getElementById('pickupSheet').classList.add('show');
+  activePickup=resv;
+}
+function closePickup(){
+  document.getElementById('pickupBg').classList.remove('show');
+  document.getElementById('pickupSheet').classList.remove('show');
+  activePickup=null;
+}
+function openOwner(){
+  const f=document.getElementById('ownerFrame');
+  if(!f.getAttribute('src')) f.setAttribute('src','owner.html');
+  document.getElementById('ownerOverlay').classList.add('show');
+}
+function closeOwner(){
+  document.getElementById('ownerOverlay').classList.remove('show');
+}
+function renderReservations(){
+  const box=document.getElementById('resvList');
+  if(!myReservations.length){ box.innerHTML='<div class="resv-empty">아직 예약한 상품이 없어요</div>'; return; }
+  const badge={wait:['wait','대기중'],done:['done','픽업완료'],expired:['expired','기간만료']};
+  box.innerHTML=myReservations.map(r=>{
+    const b=badge[r.status];
+    return `<div class="resv-item" onclick="reopenPickup('${r._id}')">
+      <span class="emo">${r.emoji}</span>
+      <div class="meta"><div class="nm">${r.product}</div><div class="sub">${r.store} · ${r.status==='wait'?fmtTime(r.seconds)+' 남음':r.status==='done'?'픽업 완료':'시간 만료'}</div></div>
+      <span class="resv-badge ${b[0]}">${b[1]}</span>
+    </div>`;
+  }).join('');
+}
+function reopenPickup(id){
+  const r=myReservations.find(x=>x._id===id);
+  if(r && r.status==='wait') showPickup(r);
+}
+let activePickup=null;
 
+renderMapGeo();
+renderBuildings();
+renderNearbyPins();
+renderTicker();
+renderCategories();
+initMapDrag();
+setInterval(globalTick,1000);
 window.addEventListener('load',initMqtt);
 </script>
 </body>
