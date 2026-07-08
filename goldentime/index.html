@@ -27,7 +27,8 @@ body{background:#000;display:flex;justify-content:center;align-items:center;over
 .roulette-label{color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;gap:9px;background:rgba(0,0,0,.45);padding:9px 17px;border-radius:22px}
 .roulette-label .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 /* 3장이 겹쳐 보이는 사진 캐러셀 */
-.roulette-mask{width:100%;max-width:520px;height:230px;overflow:hidden;position:relative;-webkit-mask:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)}
+.roulette-stage{position:relative;width:100%;max-width:520px;height:230px;display:flex;align-items:center;justify-content:center}
+.roulette-mask{width:100%;height:230px;overflow:hidden;position:relative;-webkit-mask:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)}
 .roulette-track{position:absolute;top:0;left:0;display:flex;height:230px;align-items:center;will-change:transform}
 .rcell{width:150px;flex:0 0 150px;display:flex;align-items:center;justify-content:center;padding:0 8px}
 .rcell .card{width:100%;height:186px;border-radius:20px;overflow:hidden;position:relative;background:#1a2030;box-shadow:0 10px 24px rgba(0,0,0,.4);transform:scale(.78);opacity:.4;filter:blur(1.5px) saturate(.7);transition:transform .12s linear,opacity .12s linear,filter .12s linear}
@@ -36,14 +37,14 @@ body{background:#000;display:flex;justify-content:center;align-items:center;over
 .rcell.center .card{transform:scale(1);opacity:1;filter:none;box-shadow:0 16px 34px rgba(255,59,59,.35),0 0 0 3px var(--red-l)}
 .rcell.center.settling .card{animation:settlepulse .5s ease-in-out infinite}
 @keyframes settlepulse{0%,100%{box-shadow:0 16px 34px rgba(255,59,59,.35),0 0 0 3px var(--red-l)}50%{box-shadow:0 16px 34px rgba(255,206,84,.55),0 0 0 5px #ffce54}}
-/* 슬롯머신 리일 창(고정 프레임) */
-.reel-frame{position:absolute;top:calc(50% - 4px);left:50%;transform:translate(-50%,-50%);width:166px;height:202px;pointer-events:none;z-index:3}
+/* 슬롯머신 리일 창(고정 프레임) — 카드(134×186)에 맞춰 정중앙 */
+.reel-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:142px;height:192px;pointer-events:none;z-index:3}
 .reel-frame .cn{position:absolute;width:22px;height:22px;border:3px solid #ffce54}
 .reel-frame .cn.tl{top:-3px;left:-3px;border-right:none;border-bottom:none;border-radius:9px 0 0 0}
 .reel-frame .cn.tr{top:-3px;right:-3px;border-left:none;border-bottom:none;border-radius:0 9px 0 0}
 .reel-frame .cn.bl{bottom:-3px;left:-3px;border-right:none;border-top:none;border-radius:0 0 0 9px}
 .reel-frame .cn.br{bottom:-3px;right:-3px;border-left:none;border-top:none;border-radius:0 0 9px 0}
-.reel-lights{position:absolute;top:calc(50% - 4px);left:50%;transform:translate(-50%,-50%);width:220px;height:256px;pointer-events:none;z-index:2}
+.reel-lights{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:256px;pointer-events:none;z-index:2}
 .reel-lights span{position:absolute;width:7px;height:7px;border-radius:50%;background:#ffce54;box-shadow:0 0 8px #ffce54;animation:bulb 1.1s ease-in-out infinite}
 .reel-lights span:nth-child(odd){animation-delay:.35s}
 @keyframes bulb{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
@@ -252,6 +253,9 @@ body{background:#000;display:flex;justify-content:center;align-items:center;over
 <body>
 <div class="app">
 
+  <!-- 카메라 배경 (첫 화면 제외, 분석 시작 후 켜짐) -->
+  <video id="camVideo" autoplay playsinline muted style="display:none"></video>
+
   <div class="top">
     <div class="brand"><span class="b-ic"><i class="fas fa-heart-pulse"></i></span> 골든타임</div>
     <div class="rec"><span class="d"></span> AI 응급 분석</div>
@@ -269,11 +273,13 @@ body{background:#000;display:flex;justify-content:center;align-items:center;over
   <!-- 증상 룰렛 -->
   <div class="roulette" id="roulette">
     <div class="roulette-label" id="rouletteLabel"><span class="spin"></span> 증상 분석 중…</div>
-    <div class="roulette-mask" id="rouletteMask">
-      <div class="roulette-track" id="rouletteTrack"></div>
+    <div class="roulette-stage">
+      <div class="roulette-mask" id="rouletteMask">
+        <div class="roulette-track" id="rouletteTrack"></div>
+      </div>
+      <div class="reel-lights" id="reelLights"></div>
+      <div class="reel-frame" id="reelFrame"><span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span></div>
     </div>
-    <div class="reel-lights" id="reelLights"></div>
-    <div class="reel-frame" id="reelFrame"><span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span></div>
     <div class="roulette-hit" id="rouletteHit">
       <div class="photo" id="hitPhoto"></div>
       <div class="nm" id="hitName">심정지</div>
@@ -364,7 +370,7 @@ body{background:#000;display:flex;justify-content:center;align-items:center;over
 
 <script>
 const CASES={
-  arrest:{ emoji:"❤️‍🩹", photo:"img/arrest.png", name:"심정지", conf:96, tags:["의식 없음 감지","호흡 없음 감지","입술 청색증"],
+  arrest:{ emoji:"❤️‍🩹", photo:"img/arrest", name:"심정지", conf:96, tags:["의식 없음 감지","호흡 없음 감지","입술 청색증"],
     metro:true, ar:"가슴 정중앙을 압박하세요", stepsTitle:"가슴압박(CPR) 방법",
     state:"의식·호흡 없음, 심정지 의심 (가슴압박 진행)", action:"신고자 심폐소생술(CPR) 진행 중",
     steps:[
@@ -373,7 +379,7 @@ const CASES={
       {t:"30회 압박 후 인공호흡 2회 반복",d:"자신 없으면 가슴압박만 계속해도 됩니다"},
       {t:"자동심장충격기(AED) 요청·사용",d:"도착하면 전원을 켜고 음성 안내를 그대로 따르세요"}
     ]},
-  choke:{ emoji:"😰", photo:"img/choke.png", name:"기도막힘(질식)", conf:93, tags:["목 감싼 자세 감지","기침·발성 곤란","얼굴 청색증"],
+  choke:{ emoji:"😰", photo:"img/choke", name:"기도막힘(질식)", conf:93, tags:["목 감싼 자세 감지","기침·발성 곤란","얼굴 청색증"],
     metro:false, ar:"명치와 배꼽 사이를 밀어올리세요", stepsTitle:"하임리히법 방법",
     state:"음식물 기도막힘 의심, 하임리히법 시행 중", action:"신고자 하임리히법 시행 중",
     steps:[
@@ -382,7 +388,7 @@ const CASES={
       {t:"위로 강하게 밀쳐 올리기 5회",d:"이물질이 나올 때까지 반복 (임산부·영아는 방법 다름)"},
       {t:"의식을 잃으면 눕히고 가슴압박",d:"압박마다 입 안 이물질을 확인해 제거"}
     ]},
-  seizure:{ emoji:"⚡", photo:"img/seizure.png", name:"경련·발작", conf:92, tags:["전신 경련 감지","의식 저하","사지 강직·떨림"],
+  seizure:{ emoji:"⚡", photo:"img/seizure", name:"경련·발작", conf:92, tags:["전신 경련 감지","의식 저하","사지 강직·떨림"],
     metro:false, ar:"머리 주변을 보호하세요", stepsTitle:"경련·발작 시 주변 보호",
     state:"전신 경련·발작 중, 주변 위험물 제거 및 보호", action:"신고자 환자 주변 보호 중",
     steps:[
@@ -391,7 +397,7 @@ const CASES={
       {t:"고개를 옆으로 돌려 기도 확보",d:"침·토사물이 기도로 넘어가지 않게 옆으로 눕히기"},
       {t:"경련 지속 시간 측정",d:"5분 이상 지속되거나 반복되면 매우 위험 — 즉시 이송"}
     ]},
-  bleed:{ emoji:"🩸", photo:"img/bleed.jpg", name:"심한 출혈", conf:94, tags:["다량 출혈 감지","상처 부위 식별","창백/식은땀"],
+  bleed:{ emoji:"🩸", photo:"img/bleed", name:"심한 출혈", conf:94, tags:["다량 출혈 감지","상처 부위 식별","창백/식은땀"],
     metro:false, ar:"상처를 직접 세게 누르세요", stepsTitle:"직접 압박 지혈 방법",
     state:"사지 대량 출혈, 직접 압박 지혈 중", action:"신고자 직접 압박 지혈 중",
     steps:[
@@ -464,16 +470,37 @@ function startCase(key){
   if(busy) return; busy=true;
   const c = key==='auto' ? CASES.arrest : CASES[key];
   currentCase=c;
+  startCamera(); // 첫 화면을 벗어나면 카메라 배경 켜기
   document.getElementById('picker').classList.add('hide');
   document.getElementById('stepper').classList.add('show');
   setStep(0,0);
   runRoulette(c);
 }
 
-/* 사진으로 만든 이미지 카드 (파일 없으면 이모지로 자동 대체) */
+/* 카메라: 첫 화면을 벗어날 때 배경으로 켜짐 (권한/HTTPS 없으면 조용히 숨김) */
+let camStarted=false;
+async function startCamera(){
+  const v=document.getElementById('camVideo');
+  v.style.display='block';
+  if(camStarted) return; camStarted=true;
+  try{
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ v.style.display='none'; camStarted=false; return; }
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    v.srcObject=stream; await v.play().catch(()=>{});
+  }catch(e){ v.style.display='none'; camStarted=false; }
+}
+function hideCamera(){ document.getElementById('camVideo').style.display='none'; }
+
+/* 사진 카드: 확장자를 .png → .jpg → .jpeg 순으로 자동 시도, 다 없으면 이모지 */
+const PHOTO_EXTS=['png','jpg','jpeg','PNG','JPG'];
+function nextPhoto(img){
+  let i=parseInt(img.dataset.ei||'0')+1;
+  if(i<PHOTO_EXTS.length){ img.dataset.ei=i; img.src=img.dataset.base+'.'+PHOTO_EXTS[i]; }
+  else{ img.parentElement.innerHTML='<div class="emo-fb">'+img.dataset.emoji+'</div>'; }
+}
 function photoCardHtml(caseObj){
   if(!caseObj.photo) return `<div class="emo-fb">${caseObj.emoji}</div>`;
-  return `<img src="${caseObj.photo}" alt="${caseObj.name}" onerror="this.parentElement.innerHTML='<div class=&quot;emo-fb&quot;>${caseObj.emoji}</div>'">`;
+  return `<img alt="${caseObj.name}" data-base="${caseObj.photo}" data-emoji="${caseObj.emoji}" data-ei="0" src="${caseObj.photo}.${PHOTO_EXTS[0]}" onerror="nextPhoto(this)">`;
 }
 
 /* 사진 캐러셀: 3장이 겹쳐 보이며 오른쪽→왼쪽으로 돌다가, 이건가 저건가 멈칫하며 정답에서 딱 멈춤 */
@@ -634,6 +661,7 @@ function endAll(){ document.getElementById('call119').classList.remove('show'); 
 function resetToStart(){
   busy=false; stopMetro(); stopCallTimer();
   hideSheet();
+  hideCamera(); // 첫 화면으로 돌아오면 카메라 숨김
   document.getElementById('guidePhone').classList.remove('show');
   document.getElementById('stepper').classList.remove('show');
   document.getElementById('picker').classList.remove('hide');
@@ -660,11 +688,12 @@ function checkPhotos(){
   let results=[];
   let remaining=keys.length;
   keys.forEach(k=>{
-    const path=CASES[k].photo;
+    const base=CASES[k].photo;
+    let ei=0;
     const img=new Image();
-    img.onload=()=>{ results.push(`<span class="ok">✓ ${path}</span> 정상`); if(--remaining===0) render(); };
-    img.onerror=()=>{ results.push(`<span class="bad">✗ ${path}</span> 404 (파일 없음/경로 틀림)`); if(--remaining===0) render(); };
-    img.src=path+'?t='+Date.now();
+    img.onload=()=>{ results.push(`<span class="ok">✓ ${base}.${PHOTO_EXTS[ei]}</span> 정상`); if(--remaining===0) render(); };
+    img.onerror=()=>{ ei++; if(ei<PHOTO_EXTS.length){ img.src=base+'.'+PHOTO_EXTS[ei]+'?t='+Date.now(); } else { results.push(`<span class="bad">✗ ${base}.*</span> 없음 (png/jpg/jpeg 모두 404)`); if(--remaining===0) render(); } };
+    img.src=base+'.'+PHOTO_EXTS[ei]+'?t='+Date.now();
   });
   function render(){ box.innerHTML=results.join('<br>'); }
 }
