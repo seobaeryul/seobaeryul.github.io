@@ -63,15 +63,17 @@ body{background:#000;display:flex;justify-content:center;align-items:center;over
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ===== 하단 패널 공통 ===== */
-.panel{position:absolute;left:0;right:0;bottom:0;z-index:20;background:linear-gradient(180deg,rgba(12,14,20,.86),var(--bg) 24%);backdrop-filter:blur(14px);border-radius:26px 26px 0 0;padding:8px 18px calc(env(safe-area-inset-bottom) + 20px);box-shadow:0 -12px 40px rgba(0,0,0,.5);transition:transform .4s cubic-bezier(.2,.9,.3,1.1);border-top:1px solid rgba(255,255,255,.08)}
+.panel{position:absolute;left:0;right:0;bottom:0;z-index:20;background:rgba(12,14,20,.55);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:26px 26px 0 0;padding:8px 18px calc(env(safe-area-inset-bottom) + 18px);box-shadow:0 -12px 40px rgba(0,0,0,.5);transition:transform .4s cubic-bezier(.2,.9,.3,1.1);border-top:1px solid rgba(255,255,255,.14)}
+/* 결과 패널은 가독성 위해 좀 더 진하게 */
+#result{background:rgba(12,14,20,.82)}
 .grab{width:42px;height:5px;border-radius:3px;background:#3a4256;margin:8px auto 12px}
 
 /* 케이스 선택 패널 */
 #picker{transform:translateY(0)}
 #picker.hide{transform:translateY(105%)}
-.picker-h{color:#fff;font-size:15px;font-weight:900;text-align:center;margin-bottom:3px}
-.picker-s{color:var(--sub);font-size:12px;text-align:center;margin-bottom:14px;line-height:1.5}
-.ai-btn{background:linear-gradient(135deg,var(--red-d),var(--red));border:none;border-radius:16px;padding:15px;display:flex;align-items:center;gap:13px;cursor:pointer;width:100%;margin-bottom:12px;box-shadow:0 10px 24px rgba(255,59,59,.35)}
+.picker-h{color:#fff;font-size:15px;font-weight:900;text-align:center;margin-bottom:3px;text-shadow:0 2px 6px rgba(0,0,0,.5)}
+.picker-s{color:#c4ccdb;font-size:11.5px;text-align:center;margin-bottom:12px;line-height:1.45;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.ai-btn{background:linear-gradient(135deg,var(--red-d),var(--red));border:none;border-radius:16px;padding:13px;display:flex;align-items:center;gap:13px;cursor:pointer;width:100%;margin-bottom:10px;box-shadow:0 10px 24px rgba(255,59,59,.35)}
 .ai-btn:active{transform:scale(.98)}
 .ai-btn .ic{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:19px;color:#fff;flex-shrink:0}
 .ai-btn .tx{flex:1;text-align:left}
