@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>골든타임 | AI 응급 대응</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --red:#ff3b3b;--red-d:#d11f1f;--red-l:#ff6b6b;
+  --amber:#ffb300;--blue:#2f7bff;--green:#18c07a;
+  --bg:#0c0e14;--card:#161a24;--card2:#1f2432;
+  --text:#f2f5fa;--sub:#9aa3b5;--line:#282f40;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Noto Sans KR',sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:#000;display:flex;justify-content:center;align-items:center;overflow:hidden}
+.app{width:100%;max-width:100%;height:100vh;height:100dvh;position:relative;overflow:hidden;background:#000}
+@media(min-width:820px){ .app{max-width:600px;box-shadow:0 30px 90px rgba(0,0,0,.7)} }
+
+/* ===== 항상 켜져있는 카메라 배경 ===== */
+#camVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;z-index:0}
+.cam-fallback{position:absolute;inset:0;z-index:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#5c657a;text-align:center;padding:40px;background:radial-gradient(circle at 50% 35%,#151a26,#05060a 75%)}
+.cam-fallback .ph{font-size:78px}
+.cam-fallback i{font-size:30px}
+.cam-fallback .tx{font-size:13.5px;line-height:1.6}
+/* 카메라 위 어둡게 (가독성) */
+.vignette{position:absolute;inset:0;z-index:1;pointer-events:none;background:
+  linear-gradient(180deg,rgba(0,0,0,.55) 0%,transparent 22%,transparent 45%,rgba(0,0,0,.75) 100%)}
+
+/* ===== 상단 바 ===== */
+.top{position:absolute;top:0;left:0;right:0;z-index:15;padding:calc(env(safe-area-inset-top) + 14px) 18px 14px;display:flex;align-items:center;gap:11px}
+.brand{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.brand .b-ic{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--red-l),var(--red-d));display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;box-shadow:0 6px 14px rgba(255,59,59,.5);animation:beat 1.4s infinite}
+@keyframes beat{0%,100%{transform:scale(1)}12%{transform:scale(1.16)}24%{transform:scale(1)}36%{transform:scale(1.1)}}
+.rec{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;color:#fff;background:rgba(255,59,59,.85);padding:5px 10px;border-radius:20px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.rec .d{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.gps{position:absolute;top:calc(env(safe-area-inset-top) + 52px);left:18px;right:18px;z-index:15;font-size:11.5px;color:#dfe4ee;text-shadow:0 1px 4px rgba(0,0,0,.7);display:flex;align-items:center;gap:7px}
+.gps i{color:var(--green)}
+
+/* ===== 스캔 오버레이 ===== */
+.scan-ov{position:absolute;inset:0;z-index:8;pointer-events:none;display:none}
+.scan-ov.show{display:block}
+.scan-frame{position:absolute;inset:20% 12% 34%;border:2px solid rgba(255,255,255,.45);border-radius:20px}
+.scan-frame .cn{position:absolute;width:28px;height:28px;border:3px solid var(--red-l)}
+.scan-frame .cn.tl{top:-2px;left:-2px;border-right:none;border-bottom:none;border-radius:11px 0 0 0}
+.scan-frame .cn.tr{top:-2px;right:-2px;border-left:none;border-bottom:none;border-radius:0 11px 0 0}
+.scan-frame .cn.bl{bottom:-2px;left:-2px;border-right:none;border-top:none;border-radius:0 0 0 11px}
+.scan-frame .cn.br{bottom:-2px;right:-2px;border-left:none;border-top:none;border-radius:0 0 11px 0}
+.scan-line{position:absolute;left:12%;right:12%;height:3px;background:linear-gradient(90deg,transparent,var(--red-l),#fff,var(--red-l),transparent);box-shadow:0 0 16px 3px rgba(255,107,107,.7);top:20%;border-radius:3px;animation:scanmove 2.1s ease-in-out infinite}
+@keyframes scanmove{0%{top:20%}50%{top:66%}100%{top:20%}}
+.scan-tags{position:absolute;left:14%;bottom:37%;display:flex;flex-direction:column;gap:6px}
+.scan-tag{font-size:11.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.6);padding:6px 11px;border-radius:9px;backdrop-filter:blur(4px);opacity:0;transform:translateY(6px);animation:tagin .4s forwards}
+.scan-tag b{color:var(--red-l)}
+@keyframes tagin{to{opacity:1;transform:translateY(0)}}
+.analyzing-pill{position:absolute;left:50%;top:14%;transform:translateX(-50%);background:rgba(0,0,0,.62);color:#fff;font-size:12.5px;font-weight:700;padding:9px 18px;border-radius:22px;display:flex;align-items:center;gap:9px;backdrop-filter:blur(6px);white-space:nowrap}
+.analyzing-pill .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== 하단 패널 공통 ===== */
+.panel{position:absolute;left:0;right:0;bottom:0;z-index:20;background:linear-gradient(180deg,rgba(12,14,20,.86),var(--bg) 24%);backdrop-filter:blur(14px);border-radius:26px 26px 0 0;padding:8px 18px calc(env(safe-area-inset-bottom) + 20px);box-shadow:0 -12px 40px rgba(0,0,0,.5);transition:transform .4s cubic-bezier(.2,.9,.3,1.1);border-top:1px solid rgba(255,255,255,.08)}
+.grab{width:42px;height:5px;border-radius:3px;background:#3a4256;margin:8px auto 12px}
+
+/* 케이스 선택 패널 */
+#picker{transform:translateY(0)}
+#picker.hide{transform:translateY(105%)}
+.picker-h{color:#fff;font-size:15px;font-weight:900;text-align:center;margin-bottom:3px}
+.picker-s{color:var(--sub);font-size:12px;text-align:center;margin-bottom:14px;line-height:1.5}
+.ai-btn{background:linear-gradient(135deg,var(--red-d),var(--red));border:none;border-radius:16px;padding:15px;display:flex;align-items:center;gap:13px;cursor:pointer;width:100%;margin-bottom:12px;box-shadow:0 10px 24px rgba(255,59,59,.35)}
+.ai-btn:active{transform:scale(.98)}
+.ai-btn .ic{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:19px;color:#fff;flex-shrink:0}
+.ai-btn .tx{flex:1;text-align:left}
+.ai-btn .tx h3{font-size:15px;color:#fff;font-weight:900}
+.ai-btn .tx p{font-size:11.5px;color:rgba(255,255,255,.85);margin-top:2px}
+.ai-btn .chev{color:rgba(255,255,255,.8)}
+.cases{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.case{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 13px;cursor:pointer;position:relative;overflow:hidden;transition:.16s cubic-bezier(.2,.9,.3,1.3);text-align:left}
+.case:active{transform:scale(.96)}
+.case .emo{font-size:26px}
+.case .nm{font-size:14.5px;font-weight:900;color:var(--text);margin-top:7px}
+.case .desc{font-size:10.5px;color:var(--sub);margin-top:3px;line-height:1.4}
+.case::after{content:'';position:absolute;left:0;bottom:0;width:100%;height:4px;background:linear-gradient(90deg,var(--red-l),var(--red-d))}
+.case.c-choke::after{background:linear-gradient(90deg,#ffcf5c,#ff9800)}
+.case.c-stroke::after{background:linear-gradient(90deg,#6fa8ff,#2f7bff)}
+.case.c-bleed::after{background:linear-gradient(90deg,#ff7a7a,#b71c1c)}
+
+/* 결과 패널 */
+#result{transform:translateY(105%);max-height:74%;overflow-y:auto}
+#result.show{transform:translateY(0)}
+#result::-webkit-scrollbar{display:none}
+.res-back{position:absolute;top:12px;right:16px;width:32px;height:32px;border-radius:50%;background:var(--card2);border:none;color:var(--sub);font-size:14px;cursor:pointer;z-index:2}
+.diag{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px}
+.diag .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;background:rgba(255,59,59,.15)}
+.diag .tx{flex:1;min-width:0}
+.diag .tx .lb{font-size:10.5px;color:var(--sub);font-weight:700}
+.diag .tx .nm{font-size:16px;font-weight:900;color:var(--text);margin-top:2px}
+.diag .conf{font-size:11px;font-weight:800;color:var(--green);white-space:nowrap}
+.metro{margin-top:12px;background:linear-gradient(135deg,#2a1518,#161a24);border:1px solid var(--line);border-radius:16px;padding:14px;display:none;align-items:center;gap:14px}
+.metro.show{display:flex}
+.metro .ring{width:50px;height:50px;border-radius:50%;border:3px solid var(--red);display:flex;align-items:center;justify-content:center;color:var(--red-l);font-size:18px;flex-shrink:0}
+.metro.tick .ring{animation:metrobeat .12s}
+@keyframes metrobeat{0%{transform:scale(1)}50%{transform:scale(1.18);background:rgba(255,59,59,.25)}100%{transform:scale(1)}}
+.metro .mtx{flex:1}
+.metro .mtx h4{font-size:13.5px;color:var(--text);font-weight:800}
+.metro .mtx p{font-size:11.5px;color:var(--sub);margin-top:2px}
+.metro button{background:var(--red);border:none;color:#fff;font-weight:800;font-size:12.5px;padding:9px 14px;border-radius:11px;cursor:pointer}
+.steps{margin-top:14px}
+.steps-h{font-size:12.5px;font-weight:800;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.steps-h i{color:var(--red)}
+.step{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);opacity:0;transform:translateX(-8px);animation:stepin .4s forwards}
+.step:last-child{border:none}
+.step .no{width:25px;height:25px;border-radius:50%;background:var(--red);color:#fff;font-size:12.5px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step .sb{flex:1}
+.step .sb .t{font-size:13.5px;font-weight:700;color:var(--text)}
+.step .sb .d{font-size:12px;color:var(--sub);margin-top:3px;line-height:1.5}
+@keyframes stepin{to{opacity:1;transform:translateX(0)}}
+.sos-note{margin-top:14px;background:rgba(255,59,59,.1);border:1px solid rgba(255,59,59,.3);border-radius:13px;padding:11px 13px;font-size:11.5px;color:var(--red-l);display:flex;align-items:center;gap:9px;line-height:1.5}
+
+/* ===== 119 오버레이 ===== */
+.call119{position:absolute;inset:0;z-index:200;background:linear-gradient(160deg,#1a0d10,#05060a 70%);display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 28px) 22px calc(env(safe-area-inset-bottom) + 20px);transform:translateY(100%);transition:transform .4s cubic-bezier(.2,.9,.3,1.1);overflow-y:auto}
+.call119.show{transform:translateY(0)}
+.call119::-webkit-scrollbar{display:none}
+.c-top{text-align:center}
+.call-ic{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--red-l),var(--red-d));display:flex;align-items:center;justify-content:center;font-size:38px;color:#fff;margin:0 auto;box-shadow:0 0 0 0 rgba(255,59,59,.5);animation:ring119 1.4s infinite}
+@keyframes ring119{0%{box-shadow:0 0 0 0 rgba(255,59,59,.5)}70%{box-shadow:0 0 0 24px rgba(255,59,59,0)}100%{box-shadow:0 0 0 0 rgba(255,59,59,0)}}
+.call119 h2{color:#fff;font-size:21px;font-weight:900;margin-top:18px}
+.call119 .num{color:var(--red-l);font-size:14px;font-weight:800;margin-top:6px;letter-spacing:2px}
+.call-status{color:var(--sub);font-size:12.5px;margin-top:6px;min-height:18px}
+.tx-card{margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:4px 16px}
+.tx-card .row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);opacity:.35;transition:.4s}
+.tx-card .row:last-child{border:none}
+.tx-card .row.sent{opacity:1}
+.tx-card .row .ic{width:20px;color:var(--red-l);text-align:center;font-size:14px;margin-top:1px}
+.tx-card .row .k{font-size:10.5px;color:var(--sub);font-weight:700}
+.tx-card .row .v{font-size:13px;color:var(--text);font-weight:600;margin-top:2px;line-height:1.45}
+.tx-card .row .chk{margin-left:auto;color:var(--green);font-size:14px;opacity:0;transition:.3s}
+.tx-card .row.sent .chk{opacity:1}
+.call-note{margin-top:16px;background:rgba(47,123,255,.1);border:1px solid rgba(47,123,255,.3);border-radius:13px;padding:12px 14px;font-size:12px;color:#a9c6ff;display:flex;gap:10px;line-height:1.5}
+.call-note i{font-size:16px;margin-top:1px}
+.call-actions{margin-top:20px;display:flex;gap:10px}
+.call-actions button{flex:1;padding:15px;border-radius:14px;font-size:14px;font-weight:800;border:none;cursor:pointer}
+.btn-speaker{background:var(--card2);color:var(--text)}
+.btn-hang{background:var(--red);color:#fff}
+
+/* 카메라 시작 안내(권한 필요 시 최초 탭) */
+.cam-cta{position:absolute;inset:0;z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(circle at 50% 40%,#151a26,#05060a 75%);text-align:center;padding:40px}
+.cam-cta.show{display:flex}
+.cam-cta .big{font-size:64px}
+.cam-cta h2{color:#fff;font-size:19px;font-weight:900}
+.cam-cta p{color:var(--sub);font-size:13px;line-height:1.6}
+.cam-cta button{margin-top:8px;background:linear-gradient(135deg,var(--red-l),var(--red-d));color:#fff;border:none;padding:15px 30px;border-radius:16px;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 10px 24px rgba(255,59,59,.4)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 항상 켜져있는 카메라 -->
+  <video id="camVideo" autoplay playsinline muted></video>
+  <div class="cam-fallback" id="camFallback">
+    <div class="ph">🎥</div>
+    <i class="fas fa-camera"></i>
+    <div class="tx" id="fallbackText">카메라를 사용할 수 없어 데모 모드로 진행합니다<br>(행동요령 · 119 신고는 정상 동작)</div>
+  </div>
+  <div class="vignette"></div>
+
+  <!-- 상단 -->
+  <div class="top">
+    <div class="brand"><span class="b-ic"><i class="fas fa-heart-pulse"></i></span> 골든타임</div>
+    <div class="rec"><span class="d"></span> LIVE · AI 감시중</div>
+  </div>
+  <div class="gps"><i class="fas fa-location-dot"></i> <span id="gpsText">현재 위치 확인 중…</span></div>
+
+  <!-- 스캔 오버레이 -->
+  <div class="scan-ov" id="scanOv">
+    <div class="scan-frame"><span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span></div>
+    <div class="scan-line"></div>
+    <div class="scan-tags" id="scanTags"></div>
+    <div class="analyzing-pill" id="analyzingPill"><span class="spin"></span> <span id="analyzingText">환자 상태 분석 중…</span></div>
+  </div>
+
+  <!-- 케이스 선택 패널 -->
+  <div class="panel" id="picker">
+    <div class="grab"></div>
+    <div class="picker-h">어떤 응급상황인가요?</div>
+    <div class="picker-s">환자를 카메라로 비추고 상황을 선택하면<br>AI가 분석해 행동요령 안내 + 119에 자동 신고합니다</div>
+    <button class="ai-btn" onclick="startCase('auto')">
+      <div class="ic"><i class="fas fa-wand-magic-sparkles"></i></div>
+      <div class="tx"><h3>AI 자동 분석</h3><p>상황을 모를 땐 비추기만 하세요</p></div>
+      <i class="fas fa-chevron-right chev"></i>
+    </button>
+    <div class="cases">
+      <div class="case c-arrest" onclick="startCase('arrest')"><div class="emo">❤️‍🩹</div><div class="nm">심정지</div><div class="desc">의식·호흡 없음 · CPR</div></div>
+      <div class="case c-choke" onclick="startCase('choke')"><div class="emo">😰</div><div class="nm">기도폐쇄</div><div class="desc">음식물 목 걸림 · 하임리히</div></div>
+      <div class="case c-stroke" onclick="startCase('stroke')"><div class="emo">🧠</div><div class="nm">뇌졸중</div><div class="desc">안면마비·언어장애 · FAST</div></div>
+      <div class="case c-bleed" onclick="startCase('bleed')"><div class="emo">🩸</div><div class="nm">대량 출혈</div><div class="desc">다량 출혈 · 직접 압박 지혈</div></div>
+    </div>
+  </div>
+
+  <!-- 결과 패널 -->
+  <div class="panel" id="result">
+    <button class="res-back" onclick="backToPicker()"><i class="fas fa-xmark"></i></button>
+    <div class="grab"></div>
+    <div class="diag" id="diagBox">
+      <div class="ic" id="diagEmoji">❤️‍🩹</div>
+      <div class="tx"><div class="lb">AI 분석 결과</div><div class="nm" id="diagName">심정지 의심</div></div>
+      <div class="conf" id="diagConf">일치율 96%</div>
+    </div>
+    <div class="metro" id="metro">
+      <div class="ring"><i class="fas fa-heart"></i></div>
+      <div class="mtx"><h4>가슴압박 속도 가이드</h4><p>분당 100~120회 · 소리에 맞춰 압박</p></div>
+      <button id="metroBtn" onclick="toggleMetro()">시작</button>
+    </div>
+    <div class="steps">
+      <div class="steps-h"><i class="fas fa-list-check"></i> 지금 해야 할 행동</div>
+      <div id="stepList"></div>
+    </div>
+    <div class="sos-note"><i class="fas fa-phone-volume"></i> <span>119에 자동으로 신고했습니다. 위치와 환자 상태가 전송됩니다.</span></div>
+  </div>
+
+  <!-- 119 오버레이 -->
+  <div class="call119" id="call119">
+    <div class="c-top">
+      <div class="call-ic"><i class="fas fa-phone"></i></div>
+      <h2>119 자동 신고 중</h2>
+      <div class="num">☎ 1 1 9</div>
+      <div class="call-status" id="callStatus">긴급 통화 연결 중…</div>
+    </div>
+    <div class="tx-card" id="txCard">
+      <div class="row" data-i="0"><span class="ic"><i class="fas fa-location-dot"></i></span><div><div class="k">위치 (GPS)</div><div class="v" id="txLoc">좌표 수신 중…</div></div><span class="chk"><i class="fas fa-check"></i></span></div>
+      <div class="row" data-i="1"><span class="ic"><i class="fas fa-map"></i></span><div><div class="k">추정 주소</div><div class="v" id="txAddr">주소 변환 중…</div></div><span class="chk"><i class="fas fa-check"></i></span></div>
+      <div class="row" data-i="2"><span class="ic"><i class="fas fa-notes-medical"></i></span><div><div class="k">환자 상태 (AI 판단)</div><div class="v" id="txState">분석 결과 전송 중…</div></div><span class="chk"><i class="fas fa-check"></i></span></div>
+      <div class="row" data-i="3"><span class="ic"><i class="fas fa-user-check"></i></span><div><div class="k">현장 조치</div><div class="v" id="txAction">신고자 응급처치 진행 중</div></div><span class="chk"><i class="fas fa-check"></i></span></div>
+    </div>
+    <div class="call-note"><i class="fas fa-circle-info"></i> <span>구급대원이 위 정보를 실시간으로 확인하고 있습니다. 통화가 어려워도 데이터로 상황이 전달됩니다.</span></div>
+    <div class="call-actions">
+      <button class="btn-speaker"><i class="fas fa-volume-high"></i> 스피커</button>
+      <button class="btn-hang" onclick="closeCall()"><i class="fas fa-phone-slash"></i> 통화 종료</button>
+    </div>
+  </div>
+
+  <!-- 카메라 시작 안내 (자동 재생 차단 시) -->
+  <div class="cam-cta" id="camCta">
+    <div class="big">📸</div>
+    <h2>카메라를 켜주세요</h2>
+    <p>환자 상태를 실시간으로 분석하려면<br>카메라 접근을 허용해야 합니다</p>
+    <button onclick="requestCamera()">카메라 켜기</button>
+  </div>
+
+</div>
+
+<script>
+const CASES={
+  arrest:{ emoji:"❤️‍🩹", name:"심정지 의심", conf:96, tags:["의식 없음 감지","호흡 없음 감지","입술 청색증"], metro:true,
+    state:"의식·호흡 없음, 심정지 의심 (CPR 진행)",
+    steps:[
+      {t:"어깨를 두드리며 반응·호흡 확인",d:"\"괜찮으세요?\" 외치고 반응·호흡이 없으면 즉시 압박 시작"},
+      {t:"가슴 정중앙을 강하고 빠르게 압박",d:"성인 기준 5~6cm 깊이, 분당 100~120회 (아래 가이드 소리에 맞춰서)"},
+      {t:"30회 압박 후 인공호흡 2회 반복",d:"자신 없으면 가슴압박만 계속해도 됩니다"},
+      {t:"자동심장충격기(AED) 요청",d:"도착하면 전원을 켜고 음성 안내를 그대로 따르세요"}
+    ]},
+  choke:{ emoji:"😰", name:"기도폐쇄(질식) 의심", conf:93, tags:["목 감싼 자세 감지","기침·발성 곤란","얼굴 청색증"], metro:false,
+    state:"음식물 기도폐쇄 의심, 하임리히법 시행 중",
+    steps:[
+      {t:"세게 기침하도록 유도",d:"소리를 못 내거나 숨을 못 쉬면 즉시 아래 단계로"},
+      {t:"등 뒤에서 배꼽과 명치 사이 감싸 안기",d:"한 손은 주먹, 다른 손으로 감싸 준비"},
+      {t:"위로 강하게 밀쳐 올리기 5회",d:"이물질이 나올 때까지 반복. 임산부·영아는 방법이 다릅니다"},
+      {t:"의식을 잃으면 눕히고 심폐소생술",d:"압박마다 입 안 이물질을 확인해 제거"}
+    ]},
+  stroke:{ emoji:"🧠", name:"뇌졸중 의심", conf:91, tags:["안면 비대칭 감지","한쪽 팔 처짐","발음 어눌함"], metro:false,
+    state:"안면마비·편측마비 동반, 뇌졸중 의심",
+    steps:[
+      {t:"F(Face) — 웃게 해 얼굴 처짐 확인",d:"좌우 비대칭이면 뇌졸중 가능성"},
+      {t:"A(Arm) — 양팔 들어 한쪽 내려감 확인",d:"한쪽 힘이 빠지면 위험 신호"},
+      {t:"S(Speech) — 짧은 문장 따라 말하기",d:"발음이 어눌하면 응급"},
+      {t:"T(Time) — 증상 시각 기억, 즉시 이송",d:"먹을 것·약 금지. 4.5시간 내 치료가 중요"}
+    ]},
+  bleed:{ emoji:"🩸", name:"대량 출혈", conf:94, tags:["다량 출혈 감지","상처 부위 식별","창백/식은땀"], metro:false,
+    state:"사지 대량 출혈, 직접 압박 지혈 중",
+    steps:[
+      {t:"깨끗한 천으로 상처 직접 압박",d:"피가 배어도 천을 떼지 말고 덧대어 계속 압박"},
+      {t:"출혈 부위를 심장보다 높게",d:"골절 의심 시 무리하게 움직이지 마세요"},
+      {t:"안 멈추면 지혈대 사용 고려",d:"상처보다 심장 쪽을 강하게 묶고 시각 기록"},
+      {t:"따뜻하게 유지하고 의식 확인",d:"창백·식은땀은 쇼크 신호 — 다리를 살짝 올려주세요"}
+    ]}
+};
+
+let stream=null, gps=null, metroTimer=null, metroOn=false, audioCtx=null, currentCase=null, busy=false;
+
+/* ===== 카메라: 로드 즉시 켜기 ===== */
+async function requestCamera(){
+  const v=document.getElementById('camVideo'), fb=document.getElementById('camFallback'), cta=document.getElementById('camCta');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    v.srcObject=stream; fb.style.display='none'; cta.classList.remove('show');
+    await v.play().catch(()=>{});
+  }catch(e){
+    // 권한 거부/미지원 → 데모 배경
+    cta.classList.remove('show');
+    fb.style.display='flex';
+  }
+}
+
+/* iOS는 사용자 제스처 없이 카메라 자동시작이 막힐 수 있어, 실패하면 시작 버튼 노출 */
+async function initCamera(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    document.getElementById('camFallback').style.display='flex'; return;
+  }
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    const v=document.getElementById('camVideo');
+    v.srcObject=stream; document.getElementById('camFallback').style.display='none';
+    await v.play().catch(()=>{});
+  }catch(e){
+    if(e && (e.name==='NotAllowedError' || e.name==='SecurityError')){
+      document.getElementById('camFallback').style.display='flex';
+    }else{
+      document.getElementById('camCta').classList.add('show');
+    }
+  }
+}
+
+/* ===== GPS ===== */
+function initGps(){
+  if(!navigator.geolocation){ document.getElementById('gpsText').textContent="위치 서비스 미지원"; return; }
+  navigator.geolocation.getCurrentPosition(p=>{
+    gps={lat:p.coords.latitude, lng:p.coords.longitude, acc:Math.round(p.coords.accuracy)};
+    document.getElementById('gpsText').innerHTML=`현재 위치 확보됨 · 정확도 ±${gps.acc}m`;
+  },()=>{ document.getElementById('gpsText').textContent="위치 권한 꺼짐 (신고 시 필요)"; },{enableHighAccuracy:true,timeout:8000});
+}
+function fakeAddress(){ return "인천광역시 계양구 계산로 123, OO아파트 앞 인도"; }
+
+/* ===== 분석 시작 ===== */
+function startCase(key){
+  if(busy) return; busy=true;
+  const c = key==='auto' ? CASES.arrest : CASES[key];
+  currentCase=c;
+  // 케이스 패널 내리고 스캔 시작
+  document.getElementById('picker').classList.add('hide');
+  const ov=document.getElementById('scanOv'); ov.classList.add('show');
+  document.getElementById('analyzingPill').style.display='flex';
+  document.getElementById('scanTags').innerHTML='';
+  document.getElementById('analyzingText').textContent = key==='auto' ? "환자 상태 분석 중…" : "상황 확인 중…";
+
+  c.tags.forEach((t,i)=>{
+    setTimeout(()=>{
+      const el=document.createElement('div'); el.className='scan-tag'; el.innerHTML=`<b>✓</b> ${t}`;
+      document.getElementById('scanTags').appendChild(el);
+    }, 500+i*650);
+  });
+  const total=500+c.tags.length*650+700;
+  setTimeout(()=>showDiagnosis(c), total);
+}
+
+function showDiagnosis(c){
+  document.getElementById('scanOv').classList.remove('show');
+  document.getElementById('diagEmoji').textContent=c.emoji;
+  document.getElementById('diagName').textContent=c.name;
+  document.getElementById('diagConf').textContent="일치율 "+c.conf+"%";
+  const list=document.getElementById('stepList'); list.innerHTML='';
+  c.steps.forEach((s,i)=>{
+    const el=document.createElement('div'); el.className='step'; el.style.animationDelay=(i*0.12)+'s';
+    el.innerHTML=`<div class="no">${i+1}</div><div class="sb"><div class="t">${s.t}</div><div class="d">${s.d}</div></div>`;
+    list.appendChild(el);
+  });
+  document.getElementById('metro').classList.toggle('show', !!c.metro);
+  document.getElementById('result').classList.add('show');
+  beepAlert();
+  setTimeout(()=>openCall(c), 1400);
+}
+
+function backToPicker(){
+  busy=false; stopMetro();
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('picker').classList.remove('hide');
+}
+
+/* ===== 119 ===== */
+function openCall(c){
+  document.getElementById('call119').classList.add('show');
+  document.getElementById('callStatus').textContent="긴급 통화 연결 중…";
+  document.getElementById('txLoc').textContent = gps ? `${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)} (±${gps.acc}m)` : "위치 권한 꺼짐 — 기지국 위치로 대체";
+  document.getElementById('txAddr').textContent = fakeAddress();
+  document.getElementById('txState').textContent = c.state;
+  document.getElementById('txAction').textContent = c.metro ? "신고자 심폐소생술(CPR) 진행 중" : "신고자 응급처치 진행 중";
+  const rows=document.querySelectorAll('#txCard .row');
+  rows.forEach(r=>r.classList.remove('sent'));
+  rows.forEach((r,i)=> setTimeout(()=>r.classList.add('sent'), 700+i*600));
+  setTimeout(()=>{ document.getElementById('callStatus').innerHTML="✓ 구급대 출동 요청 완료 · 정보 전송됨"; }, 700+rows.length*600);
+}
+function closeCall(){ document.getElementById('call119').classList.remove('show'); }
+
+/* ===== CPR 메트로놈 110bpm ===== */
+function toggleMetro(){ metroOn?stopMetro():startMetro(); }
+function startMetro(){
+  metroOn=true; document.getElementById('metroBtn').textContent="정지";
+  const interval=60000/110;
+  const tick=()=>{ metroBeep(); const m=document.getElementById('metro'); m.classList.add('tick'); setTimeout(()=>m.classList.remove('tick'),120); };
+  tick(); metroTimer=setInterval(tick, interval);
+}
+function stopMetro(){ metroOn=false; clearInterval(metroTimer); const b=document.getElementById('metroBtn'); if(b) b.textContent="시작"; }
+
+function ac(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function metroBeep(){ try{ const c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination);o.type='square';o.frequency.value=1000; g.gain.value=.12; g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.07); o.start();o.stop(c.currentTime+.07);}catch(e){} }
+function beepAlert(){ try{ const c=ac(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination);o.type='sine'; o.frequency.setValueAtTime(880,c.currentTime); o.frequency.setValueAtTime(1320,c.currentTime+.14); g.gain.setValueAtTime(.2,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4); o.start();o.stop(c.currentTime+.4); if(navigator.vibrate) navigator.vibrate([0,120,60,120]); }catch(e){} }
+
+/* 시작 */
+initGps();
+initCamera();
+</script>
+</body>
+</html>
