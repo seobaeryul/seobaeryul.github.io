@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Save-IT Eat | 실시간 마감할인 레이더</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <!-- MQTT 클라이언트 (브라우저용, WebSocket 기반) — jsdelivr 우선, 실패 시 unpkg 폴백 -->
@@ -271,6 +275,58 @@ body{background:radial-gradient(circle at 30% 0%,#21342b,#0e1814 70%);display:fl
 
 /* 점주 앱 링크 */
 .owner-link{background:rgba(255,255,255,.92);color:var(--primary-d);border:none;padding:6px 11px;border-radius:18px;font-size:11px;font-weight:700;box-shadow:0 4px 10px rgba(0,0,0,.18);cursor:pointer;display:inline-flex;align-items:center;gap:5px;text-decoration:none;white-space:nowrap}
+</style>
+<style>
+/* ===== UI 폴리시 오버라이드 (실제 앱 스타일) ===== */
+*{font-family:'Pretendard Variable',Pretendard,'Noto Sans KR',sans-serif}
+:root{--primary:#10c26a;--primary-d:#079451;--primary-l:#43e693;--bg:#f2f6f3;--text:#101d16;--sub:#77857d;--shadow:0 12px 30px rgba(13,42,27,.09)}
+body{background:radial-gradient(120% 80% at 30% -10%,#173423,#07110b 75%)}
+.header{background:linear-gradient(140deg,#12ce74 0%,#0aa25a 55%,#067a43);box-shadow:0 10px 34px rgba(7,148,81,.3)}
+.logo{font-weight:800;letter-spacing:-.5px}
+.logo i{width:34px;height:34px;border-radius:11px;box-shadow:0 8px 18px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.5)}
+.conn{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.16);backdrop-filter:blur(8px)}
+.header .sub{font-weight:500;letter-spacing:-.2px}
+.deals-head h2{font-size:16.5px;font-weight:800;letter-spacing:-.4px}
+.deals-head .cnt{border-radius:14px;padding:4px 11px;font-weight:800;background:linear-gradient(140deg,#eafff4,#d8f7e7);border:1px solid #cdeeda}
+.deal-card{border-radius:22px;border:1px solid #e8efe9;box-shadow:0 10px 28px rgba(13,42,27,.08)}
+.deal-card.live{border-color:rgba(16,194,106,.55);box-shadow:0 14px 34px rgba(16,194,106,.2)}
+.deal-thumb{border-radius:16px;background:linear-gradient(140deg,#43e693,#0aa25a);box-shadow:0 8px 20px rgba(16,194,106,.32),inset 0 1px 0 rgba(255,255,255,.4)}
+.deal-name{font-weight:800;letter-spacing:-.3px}
+.deal-price .now{letter-spacing:-.5px}
+.deal-price .off{border-radius:8px;padding:3px 7px;font-weight:800}
+.pin{border-radius:15px;box-shadow:0 8px 20px rgba(0,0,0,.22);font-weight:800;letter-spacing:-.2px}
+.map-btn{border-radius:12px;box-shadow:0 8px 18px rgba(0,0,0,.2)}
+.radar-hint{border-radius:24px;font-weight:600;letter-spacing:-.2px;background:rgba(14,29,21,.88);border:1px solid rgba(255,255,255,.1)}
+.toast{border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.28);border-left:none;border:1px solid #ffe1e1;border-left:5px solid var(--alert)}
+.toast h3{font-weight:800;letter-spacing:-.3px}
+.sheet{border-radius:30px 30px 0 0;box-shadow:0 -16px 50px rgba(0,0,0,.3)}
+.sheet-hero{border-radius:24px;background:linear-gradient(150deg,#12ce74,#067a43);box-shadow:0 14px 34px rgba(7,148,81,.3)}
+.sheet-hero .timer{letter-spacing:.5px}
+.prod h3{font-weight:800;letter-spacing:-.6px}
+.price-row .now{font-weight:800;letter-spacing:-.8px}
+.price-row .off{border-radius:10px;font-weight:800}
+.facts{border-radius:18px;border:1px solid #e8efe9}
+.eco-note{border-radius:16px;border:1px solid #cdeeda}
+.buy{border-radius:18px;background:linear-gradient(140deg,#14d478,#079451);box-shadow:0 14px 32px rgba(16,194,106,.38);font-weight:800;letter-spacing:-.3px}
+.pickup-code{border-radius:22px;border:2px dashed #a8e6c4;letter-spacing:12px;font-weight:800}
+.pickup-check{box-shadow:0 14px 32px rgba(16,194,106,.4)}
+.pickup-info{border-radius:18px;border:1px solid #e8efe9}
+.nav{background:rgba(255,255,255,.96);backdrop-filter:blur(16px);box-shadow:0 -8px 30px rgba(13,42,27,.08)}
+.nav-item span{font-weight:700;letter-spacing:-.2px}
+.nav-item.active::before{border-radius:0 0 5px 5px;height:3.5px}
+.cat-chip{border-radius:22px;font-weight:700;letter-spacing:-.2px;box-shadow:0 4px 12px rgba(13,42,27,.05)}
+.cat-chip.active{background:linear-gradient(140deg,#14d478,#079451);box-shadow:0 10px 22px rgba(16,194,106,.32)}
+.cat-head h2{font-weight:800;letter-spacing:-.4px}
+.eco-hero{border-radius:26px;background:linear-gradient(150deg,#067a43,#12ce74 65%,#43e693);box-shadow:0 16px 38px rgba(7,148,81,.35)}
+.eco-hero .big{font-weight:800;letter-spacing:-.8px}
+.stats .stat{border-radius:18px;border:1px solid #e8efe9}
+.card-box{border-radius:22px;border:1px solid #e8efe9}
+.card-box h3{font-weight:800;letter-spacing:-.3px}
+.menu{border-radius:22px;border:1px solid #e8efe9}
+.avatar{border-radius:20px;box-shadow:0 10px 24px rgba(16,194,106,.35)}
+.profile h2{font-weight:800;letter-spacing:-.4px}
+.ticker-wrap .tag{font-weight:800}
+.stamp.done{box-shadow:0 4px 10px rgba(16,194,106,.2)}
 </style>
 </head>
 <body>

@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Save-IT 점주용 스캐너</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';document.head.appendChild(s);"></script>
@@ -101,6 +105,37 @@ body{background:radial-gradient(circle at 30% 0%,#15291e,#08130d 70%);min-height
 .log-item:last-child{border:none}
 .log-item .t{color:#5d7a6c;font-size:11px;flex-shrink:0}
 .log-empty{color:#5d7a6c;font-size:12px;text-align:center;padding:10px 0}
+</style>
+<style>
+/* ===== UI 폴리시 오버라이드 (실제 앱 스타일) ===== */
+*{font-family:'Pretendard Variable',Pretendard,'Noto Sans KR',sans-serif}
+:root{--primary:#10c26a;--primary-d:#079451;--primary-l:#43e693;--bg:#f2f6f3;--text:#101d16;--sub:#77857d}
+body{background:radial-gradient(120% 80% at 30% -10%,#173423,#07110b 75%)}
+.wrap{box-shadow:0 0 100px rgba(0,0,0,.55)}
+.header{background:linear-gradient(140deg,#12ce74 0%,#0aa25a 55%,#067a43);padding:26px 22px 30px;box-shadow:0 10px 34px rgba(7,148,81,.28)}
+.header .logo{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.header .logo i{width:36px;height:36px;border-radius:12px;font-size:16px;box-shadow:0 8px 18px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.5)}
+.header .role{font-weight:500;letter-spacing:-.2px}
+.conn{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.16);backdrop-filter:blur(8px)}
+.section h2{font-size:14.5px;font-weight:800;letter-spacing:-.3px}
+.stat{border-radius:20px;padding:16px 15px;box-shadow:0 10px 26px rgba(13,42,27,.08);border:1px solid #e8efe9}
+.stat::after{width:64px;height:64px;top:-22px;right:-16px;background:linear-gradient(140deg,#eafff4,#d8f7e7)}
+.stat .v{font-size:23px;font-weight:800;letter-spacing:-.6px}
+.stat .l{font-weight:600}
+.scanner{border-radius:26px;box-shadow:inset 0 0 50px rgba(0,0,0,.65),0 18px 40px rgba(0,0,0,.3);border:1px solid rgba(67,230,147,.22)}
+.bulk-btn{background:linear-gradient(140deg,#123324,#0b2015);border-radius:16px;box-shadow:0 10px 24px rgba(9,28,17,.35);font-weight:800;letter-spacing:-.2px}
+.refresh-btn{border-radius:16px;border:1.5px solid #d3e6da;box-shadow:0 8px 20px rgba(13,42,27,.07);font-weight:800;letter-spacing:-.2px}
+.pos-card{border-radius:20px;box-shadow:0 10px 26px rgba(13,42,27,.08);border:2px solid #edf3ee;padding:15px 16px}
+.pos-card.applied{border-color:var(--primary);box-shadow:0 12px 30px rgba(16,194,106,.16)}
+.pos-top .emo{width:44px;height:44px;border-radius:14px;background:linear-gradient(140deg,#eafff4,#d8f7e7);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:inset 0 1px 0 #fff}
+.pos-top .nm{font-size:14px;font-weight:800;letter-spacing:-.3px}
+.pos-top .dday{border-radius:10px;padding:4px 9px;font-weight:800}
+.pos-grid .f input{border-radius:11px;padding:10px;border:1.5px solid #e2ece5;font-weight:600}
+.pos-grid .f input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(16,194,106,.14)}
+.pos-apply{background:linear-gradient(140deg,#14d478,#079451);border-radius:12px;padding:9px 16px;box-shadow:0 8px 18px rgba(16,194,106,.32);font-weight:800}
+.pos-apply:disabled{background:#c9d6cd;box-shadow:none}
+.log{border-radius:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 28px rgba(0,0,0,.25)}
+.scan-status{font-weight:700;letter-spacing:-.2px}
 </style>
 </head>
 <body>
