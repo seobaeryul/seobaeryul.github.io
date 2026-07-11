@@ -177,6 +177,10 @@ body{background:#000;display:flex;justify-content:center;align-items:center;over
 #result .grab-zone{position:sticky;top:0;z-index:5;padding:6px 0 4px;margin:-8px -20px 4px;cursor:grab;touch-action:none;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(13,16,26,.9),transparent)}
 #result .grab-zone:active{cursor:grabbing}
 #result .grab{margin:8px auto}
+.guide-img{margin-top:14px;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--card-line);background:#fff;display:none;box-shadow:0 12px 28px rgba(0,0,0,.35)}
+.guide-img img{width:100%;display:block}
+.guide-img .cap{padding:9px 13px;font-size:11px;font-weight:700;color:var(--sub);background:var(--card);border-top:1px solid var(--card-line);display:flex;align-items:center;gap:6px}
+.guide-img .cap i{color:var(--red-l)}
 .step-strip{margin-top:14px;display:flex;gap:12px;overflow-x:auto;padding:4px 2px 8px;scroll-snap-type:x mandatory}
 .step-strip::-webkit-scrollbar{display:none}
 .medal{flex:0 0 auto;width:94px;text-align:center;scroll-snap-align:center}
@@ -342,6 +346,7 @@ body{background:#000;display:flex;justify-content:center;align-items:center;over
       <div class="conf" id="diagConf">일치율 96%</div>
     </div>
     <div class="step-strip" id="guideFig"></div>
+    <div class="guide-img" id="guideImg"></div>
     <div class="metro" id="metro">
       <div class="ring"><i class="fas fa-heart"></i></div>
       <div class="mtx"><h4>가슴압박 속도 가이드</h4><p>분당 100~120회 · 소리에 맞춰 압박</p></div>
@@ -379,7 +384,7 @@ body{background:#000;display:flex;justify-content:center;align-items:center;over
 
 <script>
 const CASES={
-  arrest:{ emoji:"❤️‍🩹", photo:"img/arrest", name:"심정지", conf:96, tags:["의식 없음 감지","호흡 없음 감지","입술 청색증"],
+  arrest:{ emoji:"❤️‍🩹", photo:"img/arrest", guideImg:"img/cpr_guide", name:"심정지", conf:96, tags:["의식 없음 감지","호흡 없음 감지","입술 청색증"],
     metro:true, ar:"가슴 정중앙을 압박하세요", stepsTitle:"가슴압박(CPR) 방법",
     state:"의식·호흡 없음, 심정지 의심 (가슴압박 진행)", action:"신고자 심폐소생술(CPR) 진행 중",
     steps:[
@@ -511,6 +516,12 @@ function photoCardHtml(caseObj){
   if(!caseObj.photo) return `<div class="emo-fb">${caseObj.emoji}</div>`;
   return `<img alt="${caseObj.name}" data-base="${caseObj.photo}" data-emoji="${caseObj.emoji}" data-ei="0" src="${caseObj.photo}.${PHOTO_EXTS[0]}" onerror="nextPhoto(this)">`;
 }
+/* 대처 가이드 삽화: 파일 없으면 조용히 숨김 */
+function nextGuideImg(img){
+  let i=parseInt(img.dataset.ei||'0')+1;
+  if(i<PHOTO_EXTS.length){ img.dataset.ei=i; img.src=img.dataset.base+'.'+PHOTO_EXTS[i]; }
+  else{ const box=img.closest('.guide-img'); if(box){ box.style.display='none'; box.innerHTML=''; } }
+}
 
 /* 사진 캐러셀: 오른쪽→왼쪽으로 돌다가 점점 느려지며 정답에서 딱 멈춤 */
 function runRoulette(c){
@@ -607,6 +618,9 @@ function answerYes(){
   document.getElementById('diagConf').textContent="일치율 "+c.conf+"%";
   document.getElementById('stepsTitle').textContent=c.stepsTitle;
   document.getElementById('guideFig').innerHTML=medalHtml(Object.keys(CASES).find(k=>CASES[k]===c));
+  const gi=document.getElementById('guideImg');
+  if(c.guideImg){ gi.style.display='block'; gi.innerHTML=`<img alt="대처 가이드" data-base="${c.guideImg}" data-ei="0" src="${c.guideImg}.${PHOTO_EXTS[0]}" onerror="nextGuideImg(this)"><div class="cap"><i class="fas fa-circle-info"></i> 그림을 따라 가슴압박과 인공호흡을 시행하세요</div>`; }
+  else{ gi.style.display='none'; gi.innerHTML=''; }
   const list=document.getElementById('stepList'); list.innerHTML='';
   c.steps.forEach((s,i)=>{
     const el=document.createElement('div'); el.className='step'; el.style.animationDelay=(i*0.12)+'s';
