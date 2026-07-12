@@ -327,6 +327,10 @@ body{background:radial-gradient(120% 80% at 30% -10%,#173423,#07110b 75%)}
 .profile h2{font-weight:800;letter-spacing:-.4px}
 .ticker-wrap .tag{font-weight:800}
 .stamp.done{box-shadow:0 4px 10px rgba(16,194,106,.2)}
+/* 크루아상 딜 올리기 플로팅 버튼 */
+.quick-fab{position:absolute;right:16px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:45;width:54px;height:54px;border-radius:50%;border:none;background:linear-gradient(140deg,#14d478,#079451);color:#fff;font-size:24px;cursor:pointer;box-shadow:0 12px 28px rgba(16,194,106,.5),inset 0 1px 0 rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;transition:transform .15s;animation:fabpulse 2.4s infinite}
+.quick-fab:active{transform:scale(.9)}
+@keyframes fabpulse{0%{box-shadow:0 12px 28px rgba(16,194,106,.5),0 0 0 0 rgba(16,194,106,.5)}70%{box-shadow:0 12px 28px rgba(16,194,106,.5),0 0 0 14px rgba(16,194,106,0)}100%{box-shadow:0 12px 28px rgba(16,194,106,.5),0 0 0 0 rgba(16,194,106,0)}}
 </style>
 </head>
 <body>
@@ -519,6 +523,9 @@ body{background:radial-gradient(120% 80% at 30% -10%,#173423,#07110b 75%)}
     </div>
   </div>
 
+  <!-- 크루아상 딜 올리기 (점주 등록과 동일 기능) -->
+  <button class="quick-fab" onclick="quickCroissant()" title="크루아상 마감할인 올리기">🥐</button>
+
   <!-- 네비 -->
   <div class="nav">
     <div class="nav-item active" data-tab="map" onclick="changeTab('map',this)">
@@ -543,7 +550,7 @@ const MQTT_BROKER="wss://broker.emqx.io:8084/mqtt";
 const MQTT_TOPIC ="saveit/store/gyeyang/scan";
 
 let mqttClient=null, deals=[], openIdx=0, openIsNearby=false, openItem=null, myReservations=[], resvSeq=0;
-const EMOJI={ "삼각김밥":"🍙","김밥":"🍙","샌드위치":"🥪","요거트":"🥛","도시락":"🍱","빵":"🥐","우유":"🥛","커피":"☕" };
+const EMOJI={ "크루아상":"🥐","삼각김밥":"🍙","김밥":"🍙","샌드위치":"🥪","요거트":"🥛","도시락":"🍱","빵":"🥐","우유":"🥛","커피":"☕" };
 
 function pickEmoji(name){ for(const k in EMOJI){ if(name && name.indexOf(k)>=0) return EMOJI[k]; } return "🍽️"; }
 
@@ -753,6 +760,22 @@ function initMapDrag(){
   wrap.addEventListener('wheel',e=>{ e.preventDefault(); mapZoom(e.deltaY<0?1:-1); },{passive:false});
 }
 
+/* 크루아상 마감할인 올리기 (점주가 상품 등록하는 것과 동일 기능) */
+function quickCroissant(){
+  const payload={
+    store:"파리바게뜨 계양점", product:"크루아상", category:"빵",
+    price:"1,400원", origPrice:"2,800원",
+    qty:4, expiry:"오늘 22:00 까지", seconds:3600, dist:"도보 3분 · 240m"
+  };
+  // 점주 등록과 동일하게 MQTT로 발행 → 연결된 모든 화면에 실시간 반영
+  if(mqttClient && mqttClient.connected){
+    mqttClient.publish(MQTT_TOPIC, JSON.stringify(payload), {qos:1});
+  } else {
+    receiveDeal(payload); // 오프라인이면 이 화면에 바로 표시
+  }
+  if(navigator.vibrate) navigator.vibrate(60);
+}
+
 /* 새 딜 수신 */
 function receiveDeal(data){
   const deal={
@@ -806,9 +829,23 @@ function showToast(d){
   document.getElementById('toastTitle').textContent="["+d.store+"] 마감할인 발생!";
   document.getElementById('toastDesc').textContent=d.product+" · "+d.price+" ("+calcOff(d.price,d.origPrice)+")";
   const t=document.getElementById('toast');
-  t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
-  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),7000);
+  t.style.transform=''; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+  // 자동으로 사라지지 않음 — 위로 슬라이드해야 닫힘
 }
+
+/* 토스트 위로 스와이프하면 닫기 */
+(function initToastSwipe(){
+  const t=document.getElementById('toast');
+  let sy=0, dy=0, dragging=false;
+  const start=y=>{ dragging=true; sy=y; dy=0; t.style.transition='none'; };
+  const move=y=>{ if(!dragging) return; dy=Math.min(0,y-sy); t.style.transform='translateY('+dy+'px)'; };
+  const end=()=>{ if(!dragging) return; dragging=false; t.style.transition='';
+    if(dy<-45){ t.classList.remove('show'); t.style.transform=''; } else { t.style.transform=''; } };
+  t.addEventListener('pointerdown',e=>start(e.clientY));
+  t.addEventListener('pointermove',e=>move(e.clientY));
+  t.addEventListener('pointerup',end);
+  t.addEventListener('pointercancel',end);
+})();
 
 function notify(){
   if(navigator.vibrate) navigator.vibrate([0,110,55,110]);
